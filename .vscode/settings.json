@@ -1,0 +1,24 @@
+{
+  "files.associations": {
+    "*.env": "properties",
+  },
+  "python.missingPackage.severity": "Warning",
+  "python.analysis.inlayHints.functionReturnTypes": true,
+  "python.analysis.inlayHints.callArgumentNames": "partial",
+  "python.analysis.inlayHints.variableTypes": true,
+  "python.analysis.autoFormatStrings": true,
+  "python.analysis.autoImportCompletions": true,
+  "python.analysis.typeCheckingMode": "strict",
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.codeActionsOnSave": {
+      "source.fixAll": "never",
+      "source.organizeImports": "never",
+      "source.organizeImports.ruff": "always"
+    },
+    "editor.insertSpaces": true,
+    "editor.formatOnSave": false,
+    "editor.tabSize": 4,
+    "editor.formatOnType": false
+  }
+}
