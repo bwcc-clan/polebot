@@ -8,7 +8,6 @@
   "python.analysis.inlayHints.variableTypes": true,
   "python.analysis.autoFormatStrings": true,
   "python.analysis.autoImportCompletions": true,
-  "python.analysis.typeCheckingMode": "strict",
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.codeActionsOnSave": {
@@ -20,5 +19,10 @@
     "editor.formatOnSave": false,
     "editor.tabSize": 4,
     "editor.formatOnType": false
-  }
+  },
+  "python.testing.pytestArgs": [
+    "tests"
+  ],
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestEnabled": true
 }

@@ -1,10 +1,9 @@
 [tool.poetry]
 name = "votemapper"
 version = "0.1.0"
-description = "Hell Let Loose votemap improver for CRCON."
+description = "Hell Let Loose votemap improver bot for CRCON."
 authors = ["Rich Tebb <rich@tebb.io>"]
 readme = "README.md"
-# package-mode = false
 packages = [
     { include = "app", from = "src" },
 ]
@@ -15,11 +14,14 @@ attrs = "^24.2.0"
 websockets = "^14.0"
 uvloop = "^0.21.0"
 python-dotenv = "^1.0.1"
+cattrs = "^24.1.2"
+pytest-describe = "^2.2.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.7.3"
 mypy = "^1.13.0"
 pyright = "^1.1.388"
+pytest = "^8.3.3"
 
 [build-system]
 requires = ["poetry-core"]
@@ -27,6 +29,9 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
 myapp = "app.__main__:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["src", "tests"]
 
 [tool.pyright]
 reportOptionalMemberAccess = false
@@ -53,13 +58,12 @@ unfixable = []
 
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
 quote-style = "double"
-
 # Like Black, indent with spaces, rather than tabs.
 indent-style = "space"
-
 # Like Black, respect magic trailing commas.
 skip-magic-trailing-comma = false
 
