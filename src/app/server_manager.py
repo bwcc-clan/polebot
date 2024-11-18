@@ -19,23 +19,22 @@ class ServerManager:
         self.log_stream_client = CRCONLogStreamClient(self.server_details, log_types=[AllLogTypes.match_start])
         self.votemap_manager = VotemapManager(self.server_details)
         self._monitor_task: asyncio.Task[None] | None = None
-        self._tasks: list[asyncio.Task] = []
         self._monitor_stopping = False
 
     async def run(self) -> None:
+        tasks: list[asyncio.Task] = []
         with contextlib.suppress(ExceptionGroup):
             async with asyncio.TaskGroup() as tg:
                 if self.stop_event:
-                    self._monitor_task = tg.create_task(self._monitor_signal(), name="signal-monitor")
-                    self._tasks.append(self._monitor_task)
-                self._tasks.append(tg.create_task(self.log_stream_client.run(), name="log-stream-client"))
-                self._tasks.append(tg.create_task(self.votemap_manager.run(), name="votemap-manager"))
+                    self._monitor_task = tg.create_task(self._monitor_stop_event(), name="stop-event-monitor")
+                    tasks.append(self._monitor_task)
+                tasks.append(tg.create_task(self.log_stream_client.run(), name="log-stream-client"))
+                tasks.append(tg.create_task(self.votemap_manager.run(), name="votemap-manager"))
 
-        for task in self._tasks:
+        for task in tasks:
             logger.debug("Task %s: cancelled=%s", task.get_name(), task.cancelled())
             if not task.cancelled() and task.exception():
                 logger.exception(f"Task {task.get_name()} failed", exc_info=task.exception())
-        self._tasks.clear()
 
     def stop(self) -> None:
         self.log_stream_client.stop()
@@ -43,7 +42,7 @@ class ServerManager:
         if self._monitor_task and not self._monitor_task.done() and not self._monitor_stopping:
             self._monitor_task.cancel()
 
-    async def _monitor_signal(self) -> None:
+    async def _monitor_stop_event(self) -> None:
         if not self.stop_event:
             raise RuntimeError("Stop event not defined")
         try:

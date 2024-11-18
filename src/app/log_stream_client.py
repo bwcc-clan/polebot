@@ -4,11 +4,14 @@ import json
 import logging
 import os
 import random
+import socket
 from collections.abc import Generator
 from enum import StrEnum
 from typing import Any, Optional, Union
 
 import websockets
+import websockets.asyncio
+import websockets.asyncio.client
 from websockets.asyncio.client import ClientConnection
 
 from app.exceptions import LogStreamMessageError
@@ -85,6 +88,7 @@ class CRCONLogStreamClient:
         self.stop_event = stop_event or asyncio.Event()
         self.websocket_url = self.server_details.websocket_url + "/ws/logs"
         self.last_seen_id: str | None = None
+        self._first_connection = True
 
     async def run(self) -> None:
         while not self.stop_event.is_set():
@@ -117,17 +121,15 @@ class CRCONLogStreamClient:
                             logger.debug("No message was available")
                             continue
 
-                except Exception as ex:
-                    if isinstance(ex, websockets.ConnectionClosed):
-                        if isinstance(ex, websockets.ConnectionClosedError):
+                except (websockets.ConnectionClosed, LogStreamMessageError) as ex:
+                    match ex:
+                        case websockets.ConnectionClosedError():
                             logger.warning("Connection was closed abnormally")
-                        else:
+                        case websockets.ConnectionClosedOK():
                             logger.warning("Connection was closed normally")
-                    elif isinstance(ex, LogStreamMessageError):
-                        logger.warning(f"Remote server indicates error: {ex.message}")
-                        await websocket.close()
-                    else:
-                        raise
+                        case LogStreamMessageError():
+                            logger.warning(f"Remote server indicates error: {ex.message}")
+                            await websocket.close()
 
                     if delays is None:
                         delays = backoff()
@@ -155,9 +157,17 @@ class CRCONLogStreamClient:
         if self.server_details.rcon_headers:
             headers.update(self.server_details.rcon_headers)
 
+        if self._first_connection:
+            self._first_connection = False
+            px = process_exception
+        else:
+            px = websockets.asyncio.client.process_exception
+
         logger.info(f"Connecting to {self.websocket_url}")
 
-        ws = websockets.connect(self.websocket_url, additional_headers=headers, max_size=1_000_000_000)
+        ws = websockets.connect(
+            self.websocket_url, additional_headers=headers, max_size=1_000_000_000, process_exception=px
+        )
         return ws
 
     async def _handle_incoming_message(self, websocket: ClientConnection, message: websockets.Data) -> None:
@@ -213,3 +223,23 @@ def backoff(
         delay *= factor
     while True:
         yield max_delay
+
+
+def process_exception(exc: Exception) -> Exception | None:
+    """
+    Determine whether a connection error is retryable or fatal. This implementation differs from the websockets
+    default because it will indicate not to retry on `socket.gaierror`, enabling us to fail if DNS lookup fails.
+    """
+    if isinstance(exc, socket.gaierror):
+        # DNS lookup failed - most likely because of misconfiguration
+        return exc
+    if isinstance(exc, (EOFError, OSError, asyncio.TimeoutError)):
+        return None
+    if isinstance(exc, websockets.InvalidStatus) and exc.response.status_code in [
+        500,  # Internal Server Error
+        502,  # Bad Gateway
+        503,  # Service Unavailable
+        504,  # Gateway Timeout
+    ]:
+        return None
+    return exc
