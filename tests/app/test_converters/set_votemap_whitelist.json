@@ -1,0 +1,18 @@
+{
+  "result": null,
+  "command": "set_votemap_whitelist",
+  "arguments": {
+      "map_names": [
+          "stalingrad_warfare_night",
+          "carentan_warfare",
+          "mortain_offensiveUS_overcast",
+          "hurtgenforest_offensive_ger",
+          "PHL_L_1944_Warfare_Night",
+          "carentan_warfare_night"
+      ]
+  },
+  "failed": false,
+  "error": null,
+  "forward_results": null,
+  "version": "v10.5.1"
+}

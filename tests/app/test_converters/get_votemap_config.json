@@ -1,0 +1,29 @@
+{
+  "result": {
+      "enabled": true,
+      "default_method": "random_from_all_maps",
+      "number_last_played_to_exclude": 1,
+      "num_warfare_options": 4,
+      "num_offensive_options": 2,
+      "num_skirmish_control_options": 0,
+      "consider_offensive_same_map": true,
+      "consider_skirmishes_as_same_map": true,
+      "allow_consecutive_offensives": false,
+      "allow_consecutive_offensives_opposite_sides": false,
+      "allow_default_to_offensive": false,
+      "allow_consecutive_skirmishes": false,
+      "allow_default_to_skirmish": false,
+      "instruction_text": "Vote for the nextmap:\nType in the chat !votemap <map number>\n{map_selection}\n\nTo never see this message again type in the chat !votemap never\n\nTo renable type: !votemap allow",
+      "thank_you_text": "Thanks {player_name}, vote registered for:\n{map_name}",
+      "no_vote_text": "No votes recorded yet",
+      "reminder_frequency_minutes": 0,
+      "allow_opt_out": true,
+      "help_text": ""
+  },
+  "command": "get_votemap_config",
+  "arguments": {},
+  "failed": false,
+  "error": null,
+  "forward_results": null,
+  "version": "v10.5.1"
+}
