@@ -1,0 +1,44 @@
+{
+  "last_seen_id": "1731955686-0",
+  "logs": [
+    {
+      "id": "1731955604-1",
+      "log": {
+        "version": 1,
+        "timestamp_ms": 1731955604000,
+        "event_time": "2024-11-18T18:46:44",
+        "relative_time_ms": -1638.708,
+        "raw": "[907 ms (1731955604)] MESSAGE: player [Bambi(76543210987654321)], content [This server is under level thresholds control.\n\nOfficer are not allowed under level 30\nCommander are not allowed under level 30\n\n\n For seeding rules do !rules in game chat.\n\n Thanks for understanding.]",
+        "line_without_time": "MESSAGE: player [Bambi(76543210987654321)], content [This server is under level thresholds control.\n\nOfficer are not allowed under level 30\nCommander are not allowed under level 30\n\n\n For seeding rules do !rules in game chat.\n\n Thanks for understanding.]",
+        "action": "MESSAGE",
+        "player_name_1": "Bambi",
+        "player_id_1": "76543210987654321",
+        "player_name_2": null,
+        "player_id_2": null,
+        "weapon": null,
+        "message": "Bambi(76543210987654321): This server is under level thresholds control.  Officer are not allowed under level 30 Commander are not allowed under level 30    For seeding rules do !rules in game chat.   Thanks for understanding.",
+        "sub_content": "This server is under level thresholds control.  Officer are not allowed under level 30 Commander are not allowed under level 30    For seeding rules do !rules in game chat.   Thanks for understanding."
+      }
+    },
+    {
+      "id": "1731955686-0",
+      "log": {
+        "version": 1,
+        "timestamp_ms": 1731955686000,
+        "event_time": "2024-11-18T18:48:06",
+        "relative_time_ms": -673.4290000000001,
+        "raw": "[250 ms (1731955686)] KILL: Bj\u00f8rn(Allies/76543210123456789) -> HAMILTON(Axis/76549876543210987) with M1918A2 BAR",
+        "line_without_time": "KILL: Bj\u00f8rn(Allies/76543210123456789) -> HAMILTON(Axis/76549876543210987) with M1918A2 BAR",
+        "action": "KILL",
+        "player_name_1": "Bj\u00f8rn",
+        "player_id_1": "76543210123456789",
+        "player_name_2": "HAMILTON",
+        "player_id_2": "76549876543210987",
+        "weapon": "M1918A2 BAR",
+        "message": "Bj\u00f8rn(Allies/76543210123456789) -> HAMILTON(Axis/76549876543210987) with M1918A2 BAR",
+        "sub_content": null
+      }
+    }
+  ],
+  "error": null
+}

@@ -14,6 +14,8 @@ from app.models import (
     Environment,
     GameMode,
     Layer,
+    LogMessageType,
+    LogStreamResponse,
     Orientation,
     SetVotemapWhitelistParams,
     Team,
@@ -27,7 +29,7 @@ def describe_structure():
     def describe_with_simple_result():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.converter
+            return converters.rcon_converter
 
         def success_result(converter: JsonConverter):
             json_content = """
@@ -70,7 +72,7 @@ def describe_structure():
     def describe_with_get_maps():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.converter
+            return converters.rcon_converter
 
         @pytest.fixture
         def contents() -> Any:
@@ -127,7 +129,7 @@ def describe_structure():
     def describe_with_get_votemap_config():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.converter
+            return converters.rcon_converter
 
         @pytest.fixture
         def contents() -> Any:
@@ -148,7 +150,7 @@ def describe_structure():
     def describe_with_set_votemap_whitelist():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.converter
+            return converters.rcon_converter
 
         @pytest.fixture
         def contents() -> Any:
@@ -169,3 +171,27 @@ def describe_structure():
                 "PHL_L_1944_Warfare_Night",
                 "carentan_warfare_night",
             ]
+
+    def describe_with_logstream_response():
+        @pytest.fixture
+        def converter() -> JsonConverter:
+            return converters.rcon_converter
+
+        @pytest.fixture
+        def contents() -> Any:
+            filepath = SUPPORT_FILES_DIR.joinpath("logstream_response.json")
+            with filepath.open() as f:
+                contents = json.load(f)
+            return contents
+
+        def can_read_config(converter: JsonConverter, contents: Any):
+            response = converter.structure(contents, LogStreamResponse)
+            assert response.error is None
+            assert response.last_seen_id == "1731955686-0"
+            assert len(response.logs) == 2
+            assert response.logs[0].id == "1731955604-1"
+            assert response.logs[0].log.action == LogMessageType.message
+            assert response.logs[0].log.event_time.year == 2024
+            assert response.logs[1].id == "1731955686-0"
+            assert response.logs[1].log.player_name_1 == "Bjørn"
+

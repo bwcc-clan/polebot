@@ -1,7 +1,86 @@
+import datetime
 from enum import StrEnum
-from typing import Optional, Union
+from typing import Optional
 
 from attrs import field, frozen, validators
+
+# Represents a redis stream ID, these are by default
+# the unix timestamp of when the element was added
+# with a 0 indexed sequence number when there are
+# multiple entries at the same timestamp
+# ex: "1526919030474-0"
+StreamID = Optional[str]
+
+
+class LogMessageType(StrEnum):
+    """Both native (from the game server) and synthetic (created by CRCON) log types"""
+
+    admin = "ADMIN"
+    admin_anti_cheat = "ADMIN ANTI-CHEAT"
+    admin_banned = "ADMIN BANNED"
+    admin_idle = "ADMIN IDLE"
+    admin_kicked = "ADMIN KICKED"
+    admin_misc = "ADMIN MISC"
+    admin_perma_banned = "ADMIN PERMA BANNED"
+    allies_chat = "CHAT[Allies]"
+    allies_team_chat = "CHAT[Allies][Team]"
+    allies_unit_chat = "CHAT[Allies][Unit]"
+    axis_chat = "CHAT[Axis]"
+    axis_team_chat = "CHAT[Axis][Team]"
+    axis_unit_chat = "CHAT[Axis][Unit]"
+    camera = "CAMERA"
+    chat = "CHAT"
+    connected = "CONNECTED"
+    disconnected = "DISCONNECTED"
+    kill = "KILL"
+    match = "MATCH"
+    match_end = "MATCH ENDED"
+    match_start = "MATCH START"
+    message = "MESSAGE"
+    team_kill = "TEAM KILL"
+    team_switch = "TEAMSWITCH"
+    # Automatic kicks for team kills
+    tk = "TK"
+    tk_auto = "TK AUTO"
+    tk_auto_banned = "TK AUTO BANNED"
+    tk_auto_kicked = "TK AUTO KICKED"
+    # Vote kicks
+    vote = "VOTE"
+    vote_completed = "VOTE COMPLETED"
+    vote_expired = "VOTE EXPIRED"
+    vote_passed = "VOTE PASSED"
+    vote_started = "VOTE STARTED"
+
+
+@frozen(kw_only=True)
+class StructuredLogLineWithMetaData:
+    version: int
+    timestamp_ms: int
+    event_time: datetime.datetime
+    relative_time_ms: Optional[float]
+    raw: str
+    line_without_time: Optional[str]
+    action: str
+    player_name_1: Optional[str]
+    player_id_1: Optional[str]
+    player_name_2: Optional[str]
+    player_id_2: Optional[str]
+    weapon: Optional[str]
+    message: str
+    sub_content: Optional[str]
+
+
+@frozen(kw_only=True)
+class LogStreamObject:
+    id: StreamID
+    log: StructuredLogLineWithMetaData
+
+
+@frozen(kw_only=True)
+class LogStreamResponse:
+    logs: list[LogStreamObject]
+    last_seen_id: StreamID | None
+    error: Optional[str]
 
 
 @frozen(kw_only=True)
@@ -11,6 +90,7 @@ class ApiResult[TResult]:
     error: Optional[str]
     version: str
     result: Optional[TResult]
+
 
 @frozen(kw_only=True)
 class ApiResultWithArgs[TResult, TArgs](ApiResult[TResult]):
@@ -30,14 +110,14 @@ class GameMode(StrEnum):
     MAJORITY = "majority"
 
     @classmethod
-    def large(cls) -> tuple['GameMode', ...]:
+    def large(cls) -> tuple["GameMode", ...]:
         return (
             cls.WARFARE,
             cls.OFFENSIVE,
         )
 
     @classmethod
-    def small(cls) -> tuple['GameMode', ...]:
+    def small(cls) -> tuple["GameMode", ...]:
         return (
             cls.CONTROL,
             cls.PHASED,
@@ -96,7 +176,7 @@ class Layer:
     id: str
     map: Map
     game_mode: GameMode
-    attackers: Union[Team, None] = None
+    attackers: Optional[Team] = None
     environment: Environment = Environment.DAY
     pretty_name: str
     image_name: str

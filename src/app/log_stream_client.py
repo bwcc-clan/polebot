@@ -1,85 +1,31 @@
 import asyncio
-import datetime as dt
+import contextlib
 import json
 import logging
-import os
-import random
 import socket
 from collections.abc import Generator
-from enum import StrEnum
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 import websockets
 import websockets.asyncio
 import websockets.asyncio.client
 from websockets.asyncio.client import ClientConnection
+from websockets.asyncio.client import process_exception as process_exception_standard_rules
 
-from app.exceptions import LogStreamMessageError
-
+from . import converters
 from .crcon_server_details import CRCONServerDetails
+from .exceptions import LogStreamMessageError
+from .models import LogMessageType, LogStreamResponse
+from .utils import backoff
 
 logger = logging.getLogger(__name__)
-
-
-class AllLogTypes(StrEnum):
-    """Both native (from the game server) and synthetic (created by CRCON) log types"""
-
-    admin = "ADMIN"
-    admin_anti_cheat = "ADMIN ANTI-CHEAT"
-    admin_banned = "ADMIN BANNED"
-    admin_idle = "ADMIN IDLE"
-    admin_kicked = "ADMIN KICKED"
-    admin_misc = "ADMIN MISC"
-    admin_perma_banned = "ADMIN PERMA BANNED"
-    allies_chat = "CHAT[Allies]"
-    allies_team_chat = "CHAT[Allies][Team]"
-    allies_unit_chat = "CHAT[Allies][Unit]"
-    axis_chat = "CHAT[Axis]"
-    axis_team_chat = "CHAT[Axis][Team]"
-    axis_unit_chat = "CHAT[Axis][Unit]"
-    camera = "CAMERA"
-    chat = "CHAT"
-    connected = "CONNECTED"
-    disconnected = "DISCONNECTED"
-    kill = "KILL"
-    match = "MATCH"
-    match_end = "MATCH ENDED"
-    match_start = "MATCH START"
-    team_kill = "TEAM KILL"
-    team_switch = "TEAMSWITCH"
-    # Automatic kicks for team kills
-    tk = "TK"
-    tk_auto = "TK AUTO"
-    tk_auto_banned = "TK AUTO BANNED"
-    tk_auto_kicked = "TK AUTO KICKED"
-    # Vote kicks
-    vote = "VOTE"
-    vote_completed = "VOTE COMPLETED"
-    vote_expired = "VOTE EXPIRED"
-    vote_passed = "VOTE PASSED"
-    vote_started = "VOTE STARTED"
-
-
-class CustomDecoder(json.JSONDecoder):
-    def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(object_hook=self.try_datetime, *args, **kwargs)
-
-    @staticmethod
-    def try_datetime(d: dict[str, Any]) -> Any:
-        ret: dict[str, Any] = {}
-        for key, value in d.items():
-            try:
-                ret[key] = dt.datetime.fromisoformat(value)
-            except (ValueError, TypeError):
-                ret[key] = value
-        return ret
 
 
 class CRCONLogStreamClient:
     def __init__(
         self,
         server_details: CRCONServerDetails,
-        log_types: Optional[list[AllLogTypes]] = None,
+        log_types: Optional[list[LogMessageType]] = None,
         stop_event: Optional[asyncio.Event] = None,
     ):
         self.server_details = server_details
@@ -89,25 +35,18 @@ class CRCONLogStreamClient:
         self.websocket_url = self.server_details.websocket_url + "/ws/logs"
         self.last_seen_id: str | None = None
         self._first_connection = True
+        self._converter = converters.rcon_converter
 
     async def run(self) -> None:
         while not self.stop_event.is_set():
             delays: Generator[float] | None = None
             async for websocket in self._connect():
+                logger.info(f"Connected to CRCON websocket {self.websocket_url}")
                 if self.stop_event.is_set():
                     break
 
                 try:
-                    body_obj: dict[str, Union[str, list[AllLogTypes], list[str], None]] = {}
-                    if self.last_seen_id:
-                        body_obj["last_seen_id"] = self.last_seen_id
-                    if self.log_types:
-                        body_obj["actions"] = self.log_types
-                    body_obj["last_seen_id"] = self.last_seen_id
-                    body = json.dumps(body_obj)
-                    logger.debug("Sending init message: %s", body)
-                    await websocket.send(body)
-                    logger.info(f"Connected to CRCON websocket {self.websocket_url}")
+                    await self._send_init_message(websocket)
 
                     while not self.stop_event.is_set():
                         try:
@@ -126,26 +65,27 @@ class CRCONLogStreamClient:
                         case websockets.ConnectionClosedError():
                             logger.warning("Connection was closed abnormally")
                         case websockets.ConnectionClosedOK():
-                            logger.warning("Connection was closed normally")
+                            logger.info("Connection was closed normally")
                         case LogStreamMessageError():
                             logger.warning(f"Remote server indicates error: {ex.message}")
-                            await websocket.close()
 
+                    # Retry the above exceptions with a backoff delay
                     if delays is None:
                         delays = backoff()
                     delay = next(delays)
 
                     logger.info("Reconnecting in %.1f seconds", delay)
-                    try:
+                    with contextlib.suppress(asyncio.TimeoutError):
                         async with asyncio.timeout(delay):
                             await self.stop_event.wait()
-                    except asyncio.TimeoutError:
-                        pass
 
                     continue
 
                 else:
                     delays = None
+
+                finally:
+                    await websocket.close()
 
         logger.info("Shutdown signalled")
 
@@ -157,31 +97,54 @@ class CRCONLogStreamClient:
         if self.server_details.rcon_headers:
             headers.update(self.server_details.rcon_headers)
 
+        # Note that we handle exceptions more aggressively on first connection, because e.g. DNS errors are more
+        # likely to be configuration mistakes. On subsequent re-connection attempts, since the configuration has
+        # worked at least once, we assume that DNS errors are likely to be transient so we use the standard rules
         if self._first_connection:
             self._first_connection = False
-            px = process_exception
+            process_exception = process_exception_fail_on_dns_error
         else:
-            px = websockets.asyncio.client.process_exception
+            process_exception = process_exception_standard_rules
 
         logger.info(f"Connecting to {self.websocket_url}")
 
         ws = websockets.connect(
-            self.websocket_url, additional_headers=headers, max_size=1_000_000_000, process_exception=px
+            uri=self.websocket_url,
+            additional_headers=headers,
+            max_size=1_000_000_000,
+            process_exception=process_exception,
         )
         return ws
+
+    async def _send_init_message(self, websocket: ClientConnection) -> None:
+        """
+        Sends the initialization message that starts the log stream.
+
+        Args:
+            websocket (ClientConnection): The websocket on which to send the message.
+        """
+        body_obj: dict[str, Union[str, list[LogMessageType], list[str], None]] = {}
+        if self.last_seen_id:
+            body_obj["last_seen_id"] = self.last_seen_id
+        if self.log_types:
+            body_obj["actions"] = self.log_types
+        body_obj["last_seen_id"] = self.last_seen_id
+        body = json.dumps(body_obj)
+        logger.debug("Sending init message: %s", body)
+        await websocket.send(body)
 
     async def _handle_incoming_message(self, websocket: ClientConnection, message: websockets.Data) -> None:
         try:
             logger.debug("Message received: %s", str(message))
-            json_object = json.loads(message, cls=CustomDecoder)
-            if json_object:
-                error: str | None = json_object.get("error", None)
-                if error:
-                    logger.debug(f"Response message error: {error}")
-                    raise LogStreamMessageError(error)
+            obj = json.loads(message)
+            response = self._converter.structure(obj, LogStreamResponse)
+            if response:
+                if response.error:
+                    logger.debug(f"Response message error: {response.error}")
+                    raise LogStreamMessageError(response.error)
 
-                self.last_seen_id = json_object.get("last_seen_id", None)
-                logs_bundle = json_object.get("logs", [])
+                self.last_seen_id = response.last_seen_id
+                logs_bundle = response.logs
                 # do stuff with the logs
                 for log in logs_bundle:
                     print(log)
@@ -195,40 +158,10 @@ class CRCONLogStreamClient:
             )
 
 
-BACKOFF_INITIAL_DELAY = float(os.environ.get("LOGSTREAM_BACKOFF_INITIAL_DELAY", "5"))
-BACKOFF_MIN_DELAY = float(os.environ.get("LOGSTREAM_BACKOFF_MIN_DELAY", "3.1"))
-BACKOFF_MAX_DELAY = float(os.environ.get("LOGSTREAM_BACKOFF_MAX_DELAY", "90.0"))
-BACKOFF_FACTOR = float(os.environ.get("LOGSTREAM_BACKOFF_FACTOR", "1.618"))
-
-
-def backoff(
-    initial_delay: float = BACKOFF_INITIAL_DELAY,
-    min_delay: float = BACKOFF_MIN_DELAY,
-    max_delay: float = BACKOFF_MAX_DELAY,
-    factor: float = BACKOFF_FACTOR,
-) -> Generator[float]:
-    """
-    Generate a series of backoff delays between reconnection attempts.
-
-    Yields:
-        How many seconds to wait before retrying to connect.
-
-    """
-    # Add a random initial delay between 0 and 5 seconds.
-    # See 7.2.3. Recovering from Abnormal Closure in RFC 6455.
-    yield random.random() * initial_delay
-    delay = min_delay
-    while delay < max_delay:
-        yield delay
-        delay *= factor
-    while True:
-        yield max_delay
-
-
-def process_exception(exc: Exception) -> Exception | None:
+def process_exception_fail_on_dns_error(exc: Exception) -> Exception | None:
     """
     Determine whether a connection error is retryable or fatal. This implementation differs from the websockets
-    default because it will indicate not to retry on `socket.gaierror`, enabling us to fail if DNS lookup fails.
+    default because it indicates not to retry on `socket.gaierror`, enabling us to fail if DNS lookup fails.
     """
     if isinstance(exc, socket.gaierror):
         # DNS lookup failed - most likely because of misconfiguration
