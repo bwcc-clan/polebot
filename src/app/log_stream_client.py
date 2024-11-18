@@ -1,5 +1,4 @@
 import asyncio
-import contextlib
 import json
 import logging
 import socket
@@ -15,7 +14,7 @@ from websockets.asyncio.client import process_exception as process_exception_sta
 from . import converters
 from .crcon_server_details import CRCONServerDetails
 from .exceptions import LogStreamMessageError
-from .models import LogMessageType, LogStreamResponse
+from .models import LogMessageType, LogStreamObject, LogStreamResponse
 from .utils import backoff
 
 logger = logging.getLogger(__name__)
@@ -25,40 +24,48 @@ class CRCONLogStreamClient:
     def __init__(
         self,
         server_details: CRCONServerDetails,
+        queue: asyncio.Queue[LogStreamObject],
         log_types: Optional[list[LogMessageType]] = None,
-        stop_event: Optional[asyncio.Event] = None,
     ):
         self.server_details = server_details
         self.log_types = log_types
 
-        self.stop_event = stop_event or asyncio.Event()
         self.websocket_url = self.server_details.websocket_url + "/ws/logs"
         self.last_seen_id: str | None = None
         self._first_connection = True
         self._converter = converters.rcon_converter
+        self._queue = queue
+        self._task: asyncio.Task[None] | None = None
 
-    async def run(self) -> None:
-        while not self.stop_event.is_set():
+    def start(self, task_group: asyncio.TaskGroup) -> asyncio.Task[None]:
+        """
+        Starts a task in the specified task group that continually reads the log stream from a CRCON server.
+
+        Args:
+            task_group (asyncio.TaskGroup): The task group in which the task is created.
+
+        Returns:
+            asyncio.Task[None]: The task that was created.
+        """
+        self._task = task_group.create_task(self._run(), name="log-stream-client")
+        return self._task
+
+    def stop(self) -> None:
+        if self._task and not self._task.done():
+            self._task.cancel()
+
+    async def _run(self) -> None:
+        try:
             delays: Generator[float] | None = None
             async for websocket in self._connect():
                 logger.info(f"Connected to CRCON websocket {self.websocket_url}")
-                if self.stop_event.is_set():
-                    break
 
                 try:
                     await self._send_init_message(websocket)
 
-                    while not self.stop_event.is_set():
-                        try:
-                            # Receive with timeout so that we don't wait indefinitely, this gives us a chance to
-                            # check the stop event
-                            async with asyncio.timeout(5):
-                                message = await websocket.recv()
-
-                            await self._handle_incoming_message(websocket, message)
-                        except asyncio.TimeoutError:
-                            logger.debug("No message was available")
-                            continue
+                    while True:
+                        message = await websocket.recv()
+                        await self._handle_incoming_message(message)
 
                 except (websockets.ConnectionClosed, LogStreamMessageError) as ex:
                     match ex:
@@ -75,10 +82,7 @@ class CRCONLogStreamClient:
                     delay = next(delays)
 
                     logger.info("Reconnecting in %.1f seconds", delay)
-                    with contextlib.suppress(asyncio.TimeoutError):
-                        async with asyncio.timeout(delay):
-                            await self.stop_event.wait()
-
+                    await asyncio.sleep(delay)
                     continue
 
                 else:
@@ -87,10 +91,9 @@ class CRCONLogStreamClient:
                 finally:
                     await websocket.close()
 
-        logger.info("Shutdown signalled")
-
-    def stop(self) -> None:
-        self.stop_event.set()
+        except asyncio.CancelledError:
+            logger.info("Cancellation received, stopping")
+            raise
 
     def _connect(self) -> websockets.connect:
         headers = {"Authorization": f"Bearer {self.server_details.api_key}"}
@@ -133,7 +136,7 @@ class CRCONLogStreamClient:
         logger.debug("Sending init message: %s", body)
         await websocket.send(body)
 
-    async def _handle_incoming_message(self, websocket: ClientConnection, message: websockets.Data) -> None:
+    async def _handle_incoming_message(self, message: websockets.Data) -> None:
         try:
             logger.debug("Message received: %s", str(message))
             obj = json.loads(message)
@@ -147,7 +150,7 @@ class CRCONLogStreamClient:
                 logs_bundle = response.logs
                 # do stuff with the logs
                 for log in logs_bundle:
-                    print(log)
+                    await self._queue.put(log)
 
         except LogStreamMessageError:
             raise

@@ -3,7 +3,6 @@ import logging
 import os
 import signal
 import time
-from contextlib import suppress
 
 import uvloop
 from dotenv import load_dotenv
@@ -25,6 +24,7 @@ time.tzset()
 loop: asyncio.AbstractEventLoop | None = None
 stop_event = asyncio.Event()
 
+
 def shutdown(sig: signal.Signals) -> None:
     global loop
     if loop:
@@ -40,13 +40,10 @@ async def run_server_manager(server_details: CRCONServerDetails) -> None:
 
 
 async def async_main() -> None:
-    try:
-        load_dotenv()
+    load_dotenv()
+    async with asyncio.TaskGroup() as tg:
         server_details = get_server_details()
-        task = asyncio.ensure_future(run_server_manager(server_details))
-        await task
-    except Exception as ex:
-        logger.fatal(f"Unhandled exception {ex}", exc_info=ex)
+        tg.create_task(run_server_manager(server_details), name="server-manager")
 
 
 def main() -> None:
@@ -60,16 +57,7 @@ def main() -> None:
     try:
         loop.run_until_complete(async_main())
     except Exception as ex:
-        logger.exception("Unhandled exception", exc_info=ex)
-
-    # Let's also cancel all running tasks:
-    pending = asyncio.all_tasks(loop)
-    for task in pending:
-        task.cancel()
-        # Now we should await task to execute it's cancellation.
-        # Cancelled task raises asyncio.CancelledError that we can suppress:
-        with suppress(asyncio.CancelledError):
-            loop.run_until_complete(task)
+        logger.fatal(f"Unhandled exception {ex}", exc_info=ex)
 
 
 if __name__ == "__main__":
