@@ -5,10 +5,10 @@ import os
 from queue import Queue
 
 
-def configure_logger(log_path: str, log_level: str = "INFO"):
+def configure_logger(log_path: str, log_level: str = "INFO") -> None:
     q = Queue() # type: ignore
     os.makedirs(log_path, exist_ok=True)
-    logfile = os.path.join(log_path, "vip_seed.log")
+    logfile = os.path.join(log_path, "votemapper.log")
     print(f"Logging to {logfile}")
     logging.config.dictConfig(
         {
@@ -52,5 +52,5 @@ def configure_logger(log_path: str, log_level: str = "INFO"):
     )
     qh = logging.getHandlerByName("queue_handler")
     qh.listener.start() # type: ignore
-    atexit.register(qh.listener.stop)  # type: ignore[attr-defined]
+    atexit.register(qh.listener.stop)  # type: ignore[union-attr]
 

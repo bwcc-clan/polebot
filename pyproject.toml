@@ -16,6 +16,7 @@ uvloop = "^0.21.0"
 python-dotenv = "^1.0.1"
 cattrs = "^24.1.2"
 pytest-describe = "^2.2.0"
+aiohttp = "^3.10.10"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.7.3"
@@ -38,6 +39,15 @@ reportOptionalMemberAccess = false
 reportGeneralTypeIssues = true
 reportOptionalSubscript = false
 reportUnboundVariable = true
+
+[tool.mypy]
+python_version = "3.12"
+disallow_untyped_defs = true
+show_error_codes = true
+no_implicit_optional = true
+warn_return_any = true
+warn_unused_ignores = true
+exclude = ["scripts", "docs", "tests", "out"]
 
 [tool.ruff]
 cache-dir = ".ruff_cache"

@@ -4,7 +4,6 @@ import json
 import logging
 import os
 import random
-import threading
 from collections.abc import Generator
 from enum import StrEnum
 from typing import Any, Optional, Union
@@ -78,12 +77,12 @@ class CRCONLogStreamClient:
         self,
         server_details: CRCONServerDetails,
         log_types: Optional[list[AllLogTypes]] = None,
-        stop_event: Optional[threading.Event] = None,
+        stop_event: Optional[asyncio.Event] = None,
     ):
         self.server_details = server_details
         self.log_types = log_types
 
-        self.stop_event = stop_event or threading.Event()
+        self.stop_event = stop_event or asyncio.Event()
         self.websocket_url = self.server_details.websocket_url + "/ws/logs"
         self.last_seen_id: str | None = None
 
@@ -115,6 +114,7 @@ class CRCONLogStreamClient:
 
                             await self._handle_incoming_message(websocket, message)
                         except asyncio.TimeoutError:
+                            logger.debug("No message was available")
                             continue
 
                 except Exception as ex:
@@ -134,7 +134,11 @@ class CRCONLogStreamClient:
                     delay = next(delays)
 
                     logger.info("Reconnecting in %.1f seconds", delay)
-                    self.stop_event.wait(delay)
+                    try:
+                        async with asyncio.timeout(delay):
+                            await self.stop_event.wait()
+                    except asyncio.TimeoutError:
+                        pass
 
                     continue
 
