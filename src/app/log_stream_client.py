@@ -30,7 +30,7 @@ class CRCONLogStreamClient:
         self.server_details = server_details
         self.log_types = log_types
 
-        self.websocket_url = self.server_details.websocket_url + "/ws/logs"
+        self.websocket_url = self.server_details.websocket_url / "ws/logs"
         self.last_seen_id: str | None = None
         self._first_connection = True
         self._converter = converters.rcon_converter
@@ -112,7 +112,7 @@ class CRCONLogStreamClient:
         logger.info(f"Connecting to {self.websocket_url}")
 
         ws = websockets.connect(
-            uri=self.websocket_url,
+            uri=str(self.websocket_url),
             additional_headers=headers,
             max_size=1_000_000_000,
             process_exception=process_exception,

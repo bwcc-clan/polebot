@@ -237,3 +237,13 @@ class VoteMapUserConfig:
 @frozen(kw_only=True)
 class SetVotemapWhitelistParams:
     map_names: list[str]
+
+
+@frozen(kw_only=True)
+class StatusType:
+    name: str
+    map: Layer
+    current_players: int
+    max_players: int
+    short_name: str
+    server_number: int

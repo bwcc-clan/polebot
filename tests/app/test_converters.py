@@ -187,11 +187,13 @@ def describe_structure():
         def can_read_config(converter: JsonConverter, contents: Any):
             response = converter.structure(contents, LogStreamResponse)
             assert response.error is None
-            assert response.last_seen_id == "1731955686-0"
-            assert len(response.logs) == 2
+            assert response.last_seen_id == "1731972329-0"
+            assert len(response.logs) == 3
             assert response.logs[0].id == "1731955604-1"
             assert response.logs[0].log.action == LogMessageType.message
             assert response.logs[0].log.event_time.year == 2024
             assert response.logs[1].id == "1731955686-0"
             assert response.logs[1].log.player_name_1 == "Bjørn"
+            assert response.logs[2].id == "1731972329-0"
+            assert response.logs[2].log.action == LogMessageType.match_start
 

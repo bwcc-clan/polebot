@@ -4,6 +4,8 @@
   },
   "mypy.runUsingActiveInterpreter": true,
   "python.missingPackage.severity": "Warning",
+  "python.languageServer": "Pylance",
+  "python.analysis.diagnosticMode": "workspace",
   "python.analysis.inlayHints.functionReturnTypes": true,
   "python.analysis.inlayHints.callArgumentNames": "partial",
   "python.analysis.inlayHints.variableTypes": true,

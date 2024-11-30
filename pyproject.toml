@@ -15,14 +15,17 @@ websockets = "^14.0"
 uvloop = "^0.21.0"
 python-dotenv = "^1.0.1"
 cattrs = "^24.1.2"
-pytest-describe = "^2.2.0"
 aiohttp = "^3.10.10"
+yarl = "^1.18.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.7.3"
 mypy = "^1.13.0"
 pyright = "^1.1.388"
 pytest = "^8.3.3"
+aioresponses = "^0.7.7"
+pytest-asyncio = "^0.24.0"
+pytest-describe = "^2.2.0"
 
 [build-system]
 requires = ["poetry-core"]
@@ -33,12 +36,18 @@ myapp = "app.__main__:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.pyright]
+include = ["src"]
+exclude = ["scripts", "docs", "tests", "out"]
+reportMissingImports = "error"
 reportOptionalMemberAccess = false
 reportGeneralTypeIssues = true
 reportOptionalSubscript = false
 reportUnboundVariable = true
+pythonVersion = "3.12"
 
 [tool.mypy]
 python_version = "3.12"

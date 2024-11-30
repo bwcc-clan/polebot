@@ -1,5 +1,5 @@
 {
-  "last_seen_id": "1731955686-0",
+  "last_seen_id": "1731972329-0",
   "logs": [
     {
       "id": "1731955604-1",
@@ -37,6 +37,25 @@
         "weapon": "M1918A2 BAR",
         "message": "Bj\u00f8rn(Allies/76543210123456789) -> HAMILTON(Axis/76549876543210987) with M1918A2 BAR",
         "sub_content": null
+      }
+    },
+    {
+      "id": "1731972329-0",
+      "log": {
+        "version": 1,
+        "timestamp_ms": 1731972329000,
+        "event_time": "2024-11-18T23:25:29",
+        "relative_time_ms": -52.742999999999995,
+        "raw": "[6 ms (1731972329)] MATCH START ST MARIE DU MONT Warfare",
+        "line_without_time": "MATCH START ST MARIE DU MONT Warfare",
+        "action": "MATCH START",
+        "player_name_1": null,
+        "player_id_1": null,
+        "player_name_2": null,
+        "player_id_2": null,
+        "weapon": null,
+        "message": "MATCH START ST MARIE DU MONT Warfare",
+        "sub_content": "ST MARIE DU MONT Warfare"
       }
     }
   ],
