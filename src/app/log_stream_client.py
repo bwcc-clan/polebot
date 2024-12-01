@@ -1,9 +1,11 @@
 import asyncio
+import contextlib
 import json
 import logging
 import socket
 from collections.abc import Generator
-from typing import Optional, Union
+from types import TracebackType
+from typing import Optional, Self, Union
 
 import websockets
 import websockets.asyncio
@@ -35,26 +37,22 @@ class CRCONLogStreamClient:
         self._first_connection = True
         self._converter = converters.rcon_converter
         self._queue = queue
-        self._task: asyncio.Task[None] | None = None
+        self._exit_stack = contextlib.AsyncExitStack()
 
-    def start(self, task_group: asyncio.TaskGroup) -> asyncio.Task[None]:
+    async def __aenter__(self) -> Self:
+        await self._exit_stack.__aenter__()
+        return self
+
+    async def __aexit__(
+        self, exc_t: type[BaseException] | None, exc_v: BaseException | None, exc_tb: TracebackType | None
+    ) -> bool:
+        return await self._exit_stack.__aexit__(exc_t, exc_v, exc_tb)
+
+    async def run(self) -> None:
         """
-        Starts a task in the specified task group that continually reads the log stream from a CRCON server.
-
-        Args:
-            task_group (asyncio.TaskGroup): The task group in which the task is created.
-
-        Returns:
-            asyncio.Task[None]: The task that was created.
+        Continually reads the log stream from a CRCON server. Will reconnect indefinitely unless a permanent exception
+        occurs. This should be called as an async task, which can be cancelled to terminate processing.
         """
-        self._task = task_group.create_task(self._run(), name="log-stream-client")
-        return self._task
-
-    def stop(self) -> None:
-        if self._task and not self._task.done():
-            self._task.cancel()
-
-    async def _run(self) -> None:
         try:
             delays: Generator[float] | None = None
             async for websocket in self._connect():

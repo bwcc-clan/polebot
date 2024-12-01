@@ -12,3 +12,6 @@ class LogStreamMessageError(Exception):
         """
         self.message = message
         super().__init__(self.message)
+
+class TerminateTaskGroup(Exception):
+       """Exception raised to terminate a task group."""

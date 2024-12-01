@@ -2,9 +2,10 @@ import asyncio
 import contextlib
 import logging
 from types import TracebackType
-from typing import Optional, Self
+from typing import NoReturn, Optional, Self
 
 from .crcon_server_details import CRCONServerDetails
+from .exceptions import TerminateTaskGroup
 from .log_stream_client import CRCONLogStreamClient, LogMessageType
 from .models import LogStreamObject
 from .votemap_manager import VotemapManager
@@ -24,20 +25,23 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
     ) -> None:
         self.server_details = server_details
         self._loop = loop
+        self._stop_event = stop_event
 
-        self.stop_event = stop_event
         self._queue = asyncio.Queue[LogStreamObject](_QUEUE_SIZE)
-        self.log_stream_client = CRCONLogStreamClient(
-            server_details=self.server_details, queue=self._queue, log_types=[LogMessageType.match_start]
-        )
-        self.votemap_manager: VotemapManager | None = None
-        self._monitor_task: asyncio.Task[None] | None = None
+        self._log_stream_client: CRCONLogStreamClient | None = None
+        self._votemap_manager: VotemapManager | None = None
+        self._task_group: asyncio.TaskGroup | None = None
         self._exit_stack = contextlib.AsyncExitStack()
 
     async def __aenter__(self) -> Self:
         await self._exit_stack.__aenter__()
-        self.votemap_manager = await self._exit_stack.enter_async_context(
-            VotemapManager(self.server_details, self._queue)
+        self._votemap_manager = await self._exit_stack.enter_async_context(
+            VotemapManager(self.server_details, self._queue, self._loop)
+        )
+        self._log_stream_client = await self._exit_stack.enter_async_context(
+            CRCONLogStreamClient(
+                server_details=self.server_details, queue=self._queue, log_types=[LogMessageType.match_start]
+            )
         )
         return self
 
@@ -47,17 +51,21 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
         return await self._exit_stack.__aexit__(exc_t, exc_v, exc_tb)
 
     async def run(self) -> None:
-        if not self.votemap_manager:
-            raise RuntimeError("Context must be entered")
+        if not self._votemap_manager or not self._log_stream_client:
+            raise RuntimeError("ServerManager context must be entered")
 
         tasks: list[asyncio.Task] = []
-        with contextlib.suppress(ExceptionGroup):
+        try:
             async with asyncio.TaskGroup() as tg:
-                if self.stop_event:
-                    self._monitor_task = tg.create_task(self._monitor_stop_event(), name="stop-event-monitor")
-                    tasks.append(self._monitor_task)
-                tasks.append(self.votemap_manager.start(tg))
-                tasks.append(self.log_stream_client.start(tg))
+                self._task_group = tg
+                if self._stop_event:
+                    tasks.append(tg.create_task(self._monitor_stop_event(), name="stop-event-monitor"))
+                tasks.append(tg.create_task(self._votemap_manager.run(), name="votemap-manager"))
+                tasks.append(tg.create_task(self._log_stream_client.run(), name="log-stream-client"))
+        except* TerminateTaskGroup:
+           pass
+        finally:
+            self._task_group = None
 
         for task in tasks:
             logger.debug("Task %s: cancelled=%s", task.get_name(), task.cancelled())
@@ -68,19 +76,20 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
         self._stop_internal(True)
 
     def _stop_internal(self, stop_monitor: bool) -> None:
-        self.log_stream_client.stop()
-        if self.votemap_manager:
-            self.votemap_manager.stop()
-        if stop_monitor and self._monitor_task and not self._monitor_task.done():
-            self._monitor_task.cancel()
+        if self._task_group:
+            # add an exception-raising task to force the group to terminate
+            self._task_group.create_task(self._force_terminate_task_group())
 
     async def _monitor_stop_event(self) -> None:
-        if not self.stop_event:
-            raise RuntimeError("Stop event not configured")
+        assert self._stop_event
         try:
-            await self.stop_event.wait()
+            await self._stop_event.wait()
             logger.info("Stop event signalled, stopping")
             self._stop_internal(False)
         except asyncio.CancelledError:
             logger.info("Stop event monitor cancelled")
             raise
+
+    async def _force_terminate_task_group(self) -> NoReturn:
+       """Used to force termination of a task group."""
+       raise TerminateTaskGroup()

@@ -85,6 +85,9 @@ class LogStreamResponse:
 
 @frozen(kw_only=True)
 class ApiResult[TResult]:
+    """
+    The standard wrapper for the result of an API call. The payload, if any, is in the `result` attribute.
+    """
     command: str
     failed: bool
     error: Optional[str]
@@ -240,7 +243,7 @@ class SetVotemapWhitelistParams:
 
 
 @frozen(kw_only=True)
-class StatusType:
+class ServerStatus:
     name: str
     map: Layer
     current_players: int

@@ -35,40 +35,6 @@ def describe_when_entered():
     Tests of behaviour when the client context manager is entered correctly.
     """
 
-    DEFAULT_RESULT = {
-        "result": {
-            "name": "My Server",
-            "map": {
-                "id": "remagen_warfare",
-                "map": {
-                    "id": "remagen",
-                    "name": "REMAGEN",
-                    "tag": "REM",
-                    "pretty_name": "Remagen",
-                    "shortname": "Remagen",
-                    "allies": {"name": "us", "team": "allies"},
-                    "axis": {"name": "ger", "team": "axis"},
-                    "orientation": "vertical",
-                },
-                "game_mode": "warfare",
-                "attackers": None,
-                "environment": "day",
-                "pretty_name": "Remagen Warfare",
-                "image_name": "remagen-day.webp",
-            },
-            "current_players": 96,
-            "max_players": 100,
-            "short_name": "My Server",
-            "server_number": 1,
-        },
-        "command": "get_status",
-        "arguments": {},
-        "failed": False,
-        "error": None,
-        "forward_results": None,
-        "version": "v10.6.0",
-    }
-
     @pytest_asyncio.fixture()
     async def mock_response():
         with aioresponses() as mocker:
@@ -84,29 +50,65 @@ def describe_when_entered():
         async with CRCONApiClient(server_details=server_details, loop=current_loop) as sut:
             yield sut
 
-    @pytest.mark.asyncio()
-    async def get_status_succeeds(sut: CRCONApiClient, mock_response: aioresponses):
-        # ***** ARRANGE *****
+    def describe_get_status():
 
-        url = "https://my.example.com/api/get_status"
-        mock_response.get(url, status=200, payload=DEFAULT_RESULT)
+        DEFAULT_RESULT = {
+            "result": {
+                "name": "My Server",
+                "map": {
+                    "id": "remagen_warfare",
+                    "map": {
+                        "id": "remagen",
+                        "name": "REMAGEN",
+                        "tag": "REM",
+                        "pretty_name": "Remagen",
+                        "shortname": "Remagen",
+                        "allies": {"name": "us", "team": "allies"},
+                        "axis": {"name": "ger", "team": "axis"},
+                        "orientation": "vertical",
+                    },
+                    "game_mode": "warfare",
+                    "attackers": None,
+                    "environment": "day",
+                    "pretty_name": "Remagen Warfare",
+                    "image_name": "remagen-day.webp",
+                },
+                "current_players": 96,
+                "max_players": 100,
+                "short_name": "My Server",
+                "server_number": 1,
+            },
+            "command": "get_status",
+            "arguments": {},
+            "failed": False,
+            "error": None,
+            "forward_results": None,
+            "version": "v10.6.0",
+        }
 
-        # ***** ACT *****
-        result = await sut.get_status()
+        @pytest.mark.asyncio()
+        async def succeeds(sut: CRCONApiClient, mock_response: aioresponses):
+            # ***** ARRANGE *****
 
-        # ***** ASSERT *****
-        assert result.current_players == 96
+            url = "https://my.example.com/api/get_status"
+            mock_response.get(url, status=200, payload=DEFAULT_RESULT)
 
-    @pytest.mark.asyncio()
-    async def get_status_retries_on_failure(sut: CRCONApiClient, mock_response: aioresponses):
-        # ***** ARRANGE *****
+            # ***** ACT *****
+            result = await sut.get_status()
 
-        url = "https://my.example.com/api/get_status"
-        mock_response.get(url, status=500)
-        mock_response.get(url, status=200, payload=DEFAULT_RESULT)
+            # ***** ASSERT *****
+            assert result.current_players == 96
 
-        # ***** ACT *****
-        result = await sut.get_status()
+        @pytest.mark.asyncio()
+        async def retries_on_failure(sut: CRCONApiClient, mock_response: aioresponses):
+            # ***** ARRANGE *****
 
-        # ***** ASSERT *****
-        assert result.current_players == 96
+            url = "https://my.example.com/api/get_status"
+            mock_response.get(url, status=500)
+            mock_response.get(url, status=200, payload=DEFAULT_RESULT)
+
+            # ***** ACT *****
+            result = await sut.get_status()
+
+            # ***** ASSERT *****
+            assert result.current_players == 96

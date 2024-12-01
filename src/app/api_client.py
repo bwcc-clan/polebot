@@ -1,4 +1,5 @@
 import asyncio
+from collections.abc import Iterable
 from contextlib import AbstractAsyncContextManager, AsyncExitStack
 from types import TracebackType
 from typing import Self, Type, Unpack
@@ -10,7 +11,7 @@ from app.api_request_context import ApiRequestContext, ApiRequestParams
 
 from . import converters
 from .crcon_server_details import CRCONServerDetails
-from .models import ApiResult, StatusType
+from .models import ApiResult, Layer, ServerStatus
 
 
 class CRCONApiClient(AbstractAsyncContextManager):
@@ -42,22 +43,20 @@ class CRCONApiClient(AbstractAsyncContextManager):
         """Immediately unwind the context stack."""
         await self.__aexit__(None, None, None)
 
-    async def get_status(self) -> StatusType:
-        result = await self._call_api(type=StatusType, method=aiohttp.hdrs.METH_GET, endpoint="api/get_status")
+    async def get_status(self) -> ServerStatus:
+        result = await self._call_api(type=ServerStatus, method=aiohttp.hdrs.METH_GET, endpoint="api/get_status")
         return result
 
-    @property
-    def _safe_session(self) -> aiohttp.ClientSession:
-        if not self._session:
-            raise RuntimeError("CRCONApiClient context must be entered")
-        return self._session
+    async def get_maps(self) -> Iterable[Layer]:
+        result = await self._call_api(type=list[Layer], method=aiohttp.hdrs.METH_GET, endpoint="api/get_maps")
+        return result
 
     async def _call_api[T](
         self, type: Type[T], method: str, endpoint: str, **kwargs: Unpack[aiohttp.client._RequestOptions]
     ) -> T:
         async with self._make_request(method=method, endpoint=endpoint, **kwargs) as resp:
             j = await resp.json()
-        api_result = self._converter.structure(j, ApiResult[type]) # type: ignore[valid-type]
+        api_result = self._converter.structure(j, ApiResult[type])  # type: ignore[valid-type]
         if api_result.failed:
             raise RuntimeError(f"{endpoint} call failed")
         assert api_result.result is not None
