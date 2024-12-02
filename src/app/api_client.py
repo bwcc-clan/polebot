@@ -11,7 +11,7 @@ from app.api_request_context import ApiRequestContext, ApiRequestParams
 
 from . import converters
 from .crcon_server_details import CRCONServerDetails
-from .models import ApiResult, Layer, ServerStatus
+from .models import ApiResult, Layer, ServerStatus, VoteMapUserConfig
 
 
 class CRCONApiClient(AbstractAsyncContextManager):
@@ -49,6 +49,12 @@ class CRCONApiClient(AbstractAsyncContextManager):
 
     async def get_maps(self) -> Iterable[Layer]:
         result = await self._call_api(type=list[Layer], method=aiohttp.hdrs.METH_GET, endpoint="api/get_maps")
+        return result
+
+    async def get_votemap_config(self) -> VoteMapUserConfig:
+        result = await self._call_api(
+            type=VoteMapUserConfig, method=aiohttp.hdrs.METH_GET, endpoint="api/get_votemap_config"
+        )
         return result
 
     async def _call_api[T](

@@ -1,12 +1,15 @@
 import asyncio
 import contextlib
 import logging
+from collections.abc import Iterable
 from types import TracebackType
 from typing import Optional, Self
 
+from cache import AsyncTTL
+
 from .api_client import CRCONApiClient
 from .crcon_server_details import CRCONServerDetails
-from .models import LogMessageType, LogStreamObject, VoteMapUserConfig
+from .models import Layer, LogMessageType, LogStreamObject, ServerStatus, VoteMapUserConfig
 
 logger = logging.getLogger(__name__)
 
@@ -47,21 +50,46 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
 
         try:
             while True:
-                log = await self._queue.get()
-                print(log)
-                match log.log.action:
-                    case LogMessageType.match_end:
-                        await self._process_map_ended()
-                    case _:
-                        logger.warning("Unsupported log message type: %s", log.log.action)
+                await self._receive_and_process_message()
 
         except asyncio.CancelledError:
             logger.info("Cancellation received, shutting down")
             raise
 
-    async def _process_map_ended(self) -> None:
-        assert self._api_client
-        layers = await self._api_client.get_maps()
+    async def _receive_and_process_message(self) -> None:
+        log = await self._queue.get()
+        try:
+            logger.debug("Message received of type %s", log.log.action)
+            match log.log.action:
+                case LogMessageType.match_start | LogMessageType.team_switch:
+                    await self._process_map_started()
+                case _:
+                    logger.warning("Unsupported log message type: %s", log.log.action)
+        finally:
+            self._queue.task_done()
 
-    async def _read_settings(self) -> None:
-        pass
+    async def _process_map_started(self) -> None:
+        logger.debug("Processing map started")
+        status = await self._get_server_status()
+        layers = await self._get_server_maps()
+        votemap_config = await self._get_votemap_config()
+        print(status)
+        print(layers)
+        print(votemap_config)
+
+
+    @AsyncTTL(time_to_live=10)
+    async def _get_server_status(self) -> ServerStatus:
+        assert self._api_client
+        return await self._api_client.get_status()
+
+
+    @AsyncTTL(time_to_live=600)
+    async def _get_server_maps(self) -> Iterable[Layer]:
+        assert self._api_client
+        return await self._api_client.get_maps()
+
+    @AsyncTTL(time_to_live=600)
+    async def _get_votemap_config(self) -> VoteMapUserConfig:
+        assert self._api_client
+        return await self._api_client.get_votemap_config()

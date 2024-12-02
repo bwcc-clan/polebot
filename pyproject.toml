@@ -17,6 +17,7 @@ python-dotenv = "^1.0.1"
 cattrs = "^24.1.2"
 aiohttp = "^3.10.10"
 yarl = "^1.18.0"
+async-cache = "^1.1.1"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.7.3"
@@ -57,6 +58,7 @@ no_implicit_optional = true
 warn_return_any = true
 warn_unused_ignores = true
 exclude = ["scripts", "docs", "tests", "out"]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/stubs"
 
 [tool.ruff]
 cache-dir = ".ruff_cache"
@@ -68,7 +70,7 @@ target-version = "py312"
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
 # Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
 # McCabe complexity (`C901`) by default.
-select = ["E4", "E7", "E9", "F"]
+select = ["E4", "E7", "E9", "F", "T"]
 ignore = []
 
 # Allow fix for all enabled rules (when `--fix`) is provided.

@@ -40,7 +40,7 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
         )
         self._log_stream_client = await self._exit_stack.enter_async_context(
             CRCONLogStreamClient(
-                server_details=self.server_details, queue=self._queue, log_types=[LogMessageType.match_start]
+                server_details=self.server_details, queue=self._queue, log_types=[LogMessageType.match_start, LogMessageType.team_switch]
             )
         )
         return self
