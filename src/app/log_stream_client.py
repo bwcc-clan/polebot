@@ -11,12 +11,14 @@ import websockets
 import websockets.asyncio
 import websockets.asyncio.client
 from websockets.asyncio.client import ClientConnection
-from websockets.asyncio.client import process_exception as process_exception_standard_rules
+from websockets.asyncio.client import (
+    process_exception as process_exception_standard_rules,
+)
 
 from . import converters
+from .api_models import LogMessageType, LogStreamObject, LogStreamResponse
 from .crcon_server_details import CRCONServerDetails
 from .exceptions import LogStreamMessageError
-from .models import LogMessageType, LogStreamObject, LogStreamResponse
 from .utils import backoff
 
 logger = logging.getLogger(__name__)

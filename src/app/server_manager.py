@@ -4,10 +4,10 @@ import logging
 from types import TracebackType
 from typing import NoReturn, Optional, Self
 
+from .api_models import LogStreamObject
 from .crcon_server_details import CRCONServerDetails
 from .exceptions import TerminateTaskGroup
 from .log_stream_client import CRCONLogStreamClient, LogMessageType
-from .models import LogStreamObject
 from .votemap_manager import VotemapManager
 
 logger = logging.getLogger(__name__)

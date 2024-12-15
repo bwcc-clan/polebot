@@ -10,12 +10,14 @@ import aiohttp.typedefs
 from app.api_request_context import ApiRequestContext, ApiRequestParams
 
 from . import converters
+from .api_models import ApiResult, Layer, ServerStatus, VoteMapUserConfig
 from .crcon_server_details import CRCONServerDetails
-from .models import ApiResult, Layer, ServerStatus, VoteMapUserConfig
 
 
 class CRCONApiClient(AbstractAsyncContextManager):
-    def __init__(self, server_details: CRCONServerDetails, loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(
+        self, server_details: CRCONServerDetails, loop: asyncio.AbstractEventLoop
+    ) -> None:
         self._server_details = server_details
         self._loop = loop
         self._exit_stack = AsyncExitStack()
@@ -33,7 +35,10 @@ class CRCONApiClient(AbstractAsyncContextManager):
         return self
 
     async def __aexit__(
-        self, exc_t: type[BaseException] | None, exc_v: BaseException | None, exc_tb: TracebackType | None
+        self,
+        exc_t: type[BaseException] | None,
+        exc_v: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> bool:
         ret = await self._exit_stack.__aexit__(exc_t, exc_v, exc_tb)
         self._session = None
@@ -44,23 +49,35 @@ class CRCONApiClient(AbstractAsyncContextManager):
         await self.__aexit__(None, None, None)
 
     async def get_status(self) -> ServerStatus:
-        result = await self._call_api(type=ServerStatus, method=aiohttp.hdrs.METH_GET, endpoint="api/get_status")
+        result = await self._call_api(
+            type=ServerStatus, method=aiohttp.hdrs.METH_GET, endpoint="api/get_status"
+        )
         return result
 
     async def get_maps(self) -> Iterable[Layer]:
-        result = await self._call_api(type=list[Layer], method=aiohttp.hdrs.METH_GET, endpoint="api/get_maps")
+        result = await self._call_api(
+            type=list[Layer], method=aiohttp.hdrs.METH_GET, endpoint="api/get_maps"
+        )
         return result
 
     async def get_votemap_config(self) -> VoteMapUserConfig:
         result = await self._call_api(
-            type=VoteMapUserConfig, method=aiohttp.hdrs.METH_GET, endpoint="api/get_votemap_config"
+            type=VoteMapUserConfig,
+            method=aiohttp.hdrs.METH_GET,
+            endpoint="api/get_votemap_config",
         )
         return result
 
     async def _call_api[T](
-        self, type: Type[T], method: str, endpoint: str, **kwargs: Unpack[aiohttp.client._RequestOptions]
+        self,
+        type: Type[T],
+        method: str,
+        endpoint: str,
+        **kwargs: Unpack[aiohttp.client._RequestOptions],
     ) -> T:
-        async with self._make_request(method=method, endpoint=endpoint, **kwargs) as resp:
+        async with self._make_request(
+            method=method, endpoint=endpoint, **kwargs
+        ) as resp:
             j = await resp.json()
         api_result = self._converter.structure(j, ApiResult[type])  # type: ignore[valid-type]
         if api_result.failed:
@@ -69,7 +86,10 @@ class CRCONApiClient(AbstractAsyncContextManager):
         return api_result.result
 
     def _make_request(
-        self, method: str, endpoint: str, **kwargs: Unpack[aiohttp.client._RequestOptions]
+        self,
+        method: str,
+        endpoint: str,
+        **kwargs: Unpack[aiohttp.client._RequestOptions],
     ) -> ApiRequestContext:
         if not self._session:
             raise RuntimeError("CRCONApiClient context must be entered")

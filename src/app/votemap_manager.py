@@ -8,8 +8,14 @@ from typing import Optional, Self
 from cache import AsyncTTL
 
 from .api_client import CRCONApiClient
+from .api_models import (
+    Layer,
+    LogMessageType,
+    LogStreamObject,
+    ServerStatus,
+    VoteMapUserConfig,
+)
 from .crcon_server_details import CRCONServerDetails
-from .models import Layer, LogMessageType, LogStreamObject, ServerStatus, VoteMapUserConfig
 
 logger = logging.getLogger(__name__)
 

@@ -1,6 +1,6 @@
 from collections.abc import Iterable, Sequence
 
-from .models import GameMode, Layer, ServerStatus, VoteMapUserConfig
+from .api_models import GameMode, Layer, ServerStatus, VoteMapUserConfig
 
 
 class MapSelector:
