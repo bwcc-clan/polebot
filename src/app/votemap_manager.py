@@ -73,6 +73,7 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
         status = await self._get_server_status()
         layers = await self._get_server_maps()
         votemap_config = await self._get_votemap_config()
+        map_history = [status.map.map.id]
         print(status)
         print(layers)
         print(votemap_config)
