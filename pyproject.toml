@@ -20,6 +20,9 @@ yarl = "^1.18.0"
 async-cache = "^1.1.1"
 numpy = "^2.2.0"
 pandas = "^2.2.3"
+environ-config = "^24.1.0"
+lagom = "^2.7.5"
+typeguard = "^4.4.1"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.7.3"

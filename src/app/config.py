@@ -1,5 +1,7 @@
 import os
 
+import environ
+
 from .crcon_server_details import CRCONServerDetails
 
 
@@ -14,3 +16,9 @@ def get_server_details() -> CRCONServerDetails:
     return CRCONServerDetails(
         get_required_environ("RCON_API_BASE_URL"), get_required_environ("RCON_API_KEY")
     )
+
+@environ.config(prefix="APP")
+class AppConfig:
+    @environ.config
+    class Paths:
+        name = environ.var("weighting_config.json")

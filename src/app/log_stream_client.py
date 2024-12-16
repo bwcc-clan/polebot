@@ -32,13 +32,13 @@ class CRCONLogStreamClient:
         log_types: Optional[list[LogMessageType]] = None,
     ):
         self.server_details = server_details
-        self.log_types = log_types
+        self._queue = queue
+        self.log_types: list[LogMessageType] | None = log_types
 
         self.websocket_url = self.server_details.websocket_url / "ws/logs"
         self.last_seen_id: str | None = None
         self._first_connection = True
         self._converter = converters.rcon_converter
-        self._queue = queue
         self._exit_stack = contextlib.AsyncExitStack()
 
     async def __aenter__(self) -> Self:
@@ -46,7 +46,10 @@ class CRCONLogStreamClient:
         return self
 
     async def __aexit__(
-        self, exc_t: type[BaseException] | None, exc_v: BaseException | None, exc_tb: TracebackType | None
+        self,
+        exc_t: type[BaseException] | None,
+        exc_v: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> bool:
         return await self._exit_stack.__aexit__(exc_t, exc_v, exc_tb)
 
@@ -74,7 +77,9 @@ class CRCONLogStreamClient:
                         case websockets.ConnectionClosedOK():
                             logger.info("Connection was closed normally")
                         case LogStreamMessageError():
-                            logger.warning(f"Remote server indicates error: {ex.message}")
+                            logger.warning(
+                                f"Remote server indicates error: {ex.message}"
+                            )
 
                     # Retry the above exceptions with a backoff delay
                     if delays is None:

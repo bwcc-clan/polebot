@@ -370,6 +370,27 @@ files = [
 ]
 
 [[package]]
+name = "environ-config"
+version = "24.1.0"
+description = "Boilerplate-free configuration with env variables."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "environ_config-24.1.0-py3-none-any.whl", hash = "sha256:f63c03ac6533cbf0836de988fb40dd330278bf6424734218f807d509ee835737"},
+    {file = "environ_config-24.1.0.tar.gz", hash = "sha256:473a25809b2199bcd2aab0d70c9ed9289d3ff4dfca16eec518a74c65f2a9f021"},
+]
+
+[package.dependencies]
+attrs = ">=17.4.0"
+
+[package.extras]
+aws = ["boto3"]
+cov = ["coverage[toml] (>=7.2.0)", "moto", "pytest"]
+dev = ["moto", "nox", "pre-commit", "pytest"]
+docs = ["boto3", "furo", "myst-parser", "sphinx", "sphinx-notfound-page"]
+tests = ["moto", "pytest"]
+
+[[package]]
 name = "executing"
 version = "2.1.0"
 description = "Get the currently executing AST node of a frame, and other information"
@@ -638,6 +659,44 @@ traitlets = ">=5.3"
 [package.extras]
 docs = ["myst-parser", "pydata-sphinx-theme", "sphinx-autodoc-typehints", "sphinxcontrib-github-alt", "sphinxcontrib-spelling", "traitlets"]
 test = ["ipykernel", "pre-commit", "pytest (<8)", "pytest-cov", "pytest-timeout"]
+
+[[package]]
+name = "lagom"
+version = "2.7.5"
+description = "Lagom is a dependency injection container designed to give you 'just enough' help with building your dependencies."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "lagom-2.7.5-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:483410b44f987794457e6e0ca9ca51f2ae8b25023c8925277886576679ae614d"},
+    {file = "lagom-2.7.5-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a7b3650400249aa377dca4bc430161d56a245251f6ffe81206c15d51f2fe8538"},
+    {file = "lagom-2.7.5-cp310-cp310-musllinux_1_2_x86_64.whl", hash = "sha256:cf601e9a3a2228bc41605a3fe0b4619311ae9eab5bf86958dcc883383b941fe9"},
+    {file = "lagom-2.7.5-cp310-cp310-win32.whl", hash = "sha256:ba48142711be8069b2c958b474fd4611346c18edd0a041dc3c1986cdae0a7ce2"},
+    {file = "lagom-2.7.5-cp310-cp310-win_amd64.whl", hash = "sha256:cee939be4a1a4de1eee2c5606079e541eb468d43b714a4343c2c77c6db1d557b"},
+    {file = "lagom-2.7.5-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:c4c71d4781d2f9ab6c07da87ccfb57b1643fa88ba5c812d0b0ac495f6d175d67"},
+    {file = "lagom-2.7.5-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:659181d95cf36c81cc469f4a44d611c29b3e5d8463ece4da3247d80e7ff3adfa"},
+    {file = "lagom-2.7.5-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:c02a9ac412d4bf61b93b9875afa32e30b28298d3b09c8e74bf6d04c88c107e62"},
+    {file = "lagom-2.7.5-cp311-cp311-win32.whl", hash = "sha256:cbdbfcb918e2f92ba5a7c82b81eb1bafb20bc058ed62d8aadb097794beadede3"},
+    {file = "lagom-2.7.5-cp311-cp311-win_amd64.whl", hash = "sha256:00cfbc0d0b6b96184ca2edc5ae0c400b4a581a8a3a9a7be911edd5d0bc086cff"},
+    {file = "lagom-2.7.5-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:1f1a364ef58f0340fbbffe60b582973ad0feb1fc41b661651e941093c11613b6"},
+    {file = "lagom-2.7.5-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8d03ba60b65504b63d0a98e8203bd9d8f64f82845be8fd5f8cfe12fdf06325e6"},
+    {file = "lagom-2.7.5-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:45524aec5f9fe9c859878146036450bb8cdfc90ea1709050a21b1be070a3a80b"},
+    {file = "lagom-2.7.5-cp312-cp312-win32.whl", hash = "sha256:61b6fb63c046124bcb74763ef09b2e81a59c5d480a7fac0c1b4e291796392ef1"},
+    {file = "lagom-2.7.5-cp312-cp312-win_amd64.whl", hash = "sha256:7ed4e215671af49e14ea643ac722e7166b79594f1b50fa28e5af82c0ff74ef42"},
+    {file = "lagom-2.7.5-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:8b4efd73db9187cef8db56c64bf568b9e89c9e2bd57eefb783299a8c3806df5a"},
+    {file = "lagom-2.7.5-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6a819fd1cdf99fb3d8a3cc8728a9433585923303cda292ab68f99a16fff31b37"},
+    {file = "lagom-2.7.5-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:a5e8028cfad111da473301472a2337410e8a3351522481d4f3f5f6832c617489"},
+    {file = "lagom-2.7.5-cp313-cp313-win32.whl", hash = "sha256:a896a2509aaf0fae7623f20611bfdc0f82cca4c4b0a112aad4ab5c57f1ed2a62"},
+    {file = "lagom-2.7.5-cp313-cp313-win_amd64.whl", hash = "sha256:798fd2a7e5e98967e400d4d87f28d4e04b6dd9300f532ab6f99180c430878d1c"},
+    {file = "lagom-2.7.5-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:00b53bae709dd3a3c9566141c3b780bd264063370b627ed692a63ea6e0abcc81"},
+    {file = "lagom-2.7.5-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6f39cb3fc91c639d5949c96d776b799154f78757b2cfe17d1df3a8247fecb5f0"},
+    {file = "lagom-2.7.5-cp39-cp39-musllinux_1_2_x86_64.whl", hash = "sha256:1653bccca53be1cb3096dee06e15a6e65d74b1ae7d146acf10b70984ed3114fd"},
+    {file = "lagom-2.7.5-cp39-cp39-win32.whl", hash = "sha256:d11c3833c74953614d43db92a5cd5799b78bb4e6ac29720a74a3eafc971a8f46"},
+    {file = "lagom-2.7.5-cp39-cp39-win_amd64.whl", hash = "sha256:ea2e4ac0ccc75ec6a1041c55845ff6d80a6e9f7d117def0c1f745799e8bce5e3"},
+    {file = "lagom-2.7.5-py3-none-any.whl", hash = "sha256:92110574bc3ffee534659a588ad4c399d39aeee7860b6369c85d44f538f885be"},
+]
+
+[package.extras]
+env = ["pydantic (>=1.0.0,<3.0.0)"]
 
 [[package]]
 name = "matplotlib-inline"
@@ -1609,6 +1668,24 @@ docs = ["myst-parser", "pydata-sphinx-theme", "sphinx"]
 test = ["argcomplete (>=3.0.3)", "mypy (>=1.7.0)", "pre-commit", "pytest (>=7.0,<8.2)", "pytest-mock", "pytest-mypy-testing"]
 
 [[package]]
+name = "typeguard"
+version = "4.4.1"
+description = "Run-time type checker for Python"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "typeguard-4.4.1-py3-none-any.whl", hash = "sha256:9324ec07a27ec67fc54a9c063020ca4c0ae6abad5e9f0f9804ca59aee68c6e21"},
+    {file = "typeguard-4.4.1.tar.gz", hash = "sha256:0d22a89d00b453b47c49875f42b6601b961757541a2e1e0ef517b6e24213c21b"},
+]
+
+[package.dependencies]
+typing-extensions = ">=4.10.0"
+
+[package.extras]
+doc = ["Sphinx (>=7)", "packaging", "sphinx-autodoc-typehints (>=1.2.0)", "sphinx-rtd-theme (>=1.3.0)"]
+test = ["coverage[toml] (>=7)", "mypy (>=1.2.0)", "pytest (>=7)"]
+
+[[package]]
 name = "typing-extensions"
 version = "4.12.2"
 description = "Backported and Experimental Type Hints for Python 3.8+"
@@ -1869,4 +1946,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "4aa5dbfbb7c259e2a41d81f5818b9d42fcca868827e0b419ec5397c6c60e56a3"
+content-hash = "045a84ac05cb558bf73a6fe5b550b00437d7740bf4ebc88440d963ba269e4bed"

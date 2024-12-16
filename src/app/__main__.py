@@ -4,10 +4,16 @@ import os
 import signal
 import time
 
+import environ
 import uvloop
 from dotenv import load_dotenv
+from lagom import Container
 
-from .config import get_server_details
+from .composition_root import (
+    begin_server_context,
+    init_container,
+)
+from .config import AppConfig, get_server_details
 from .crcon_server_details import CRCONServerDetails
 from .logging_utils import configure_logger
 from .server_manager import ServerManager
@@ -34,16 +40,26 @@ def shutdown(sig: signal.Signals) -> None:
         logger.info("Received %s", sig.name)
 
 
-async def run_server_manager(server_details: CRCONServerDetails, loop: asyncio.AbstractEventLoop) -> None:
-    async with ServerManager(server_details=server_details, loop=loop, stop_event=_stop_event) as manager:
-        await manager.run()
+async def run_server_manager(
+    server_details: CRCONServerDetails, container: Container
+) -> None:
+    with begin_server_context(
+        container, server_details, _stop_event
+    ) as context_container:
+        server_manager = context_container[ServerManager]
+        async with server_manager:
+            await server_manager.run()
 
 
 async def async_main(loop: asyncio.AbstractEventLoop) -> None:
     load_dotenv()
+    cfg = environ.to_config(AppConfig)
+    container = init_container(app_config=cfg, loop=loop)
     async with asyncio.TaskGroup() as tg:
         server_details = get_server_details()
-        tg.create_task(run_server_manager(server_details, loop), name="server-manager")
+        tg.create_task(
+            run_server_manager(server_details, container), name="server-manager"
+        )
 
 
 def main() -> None:

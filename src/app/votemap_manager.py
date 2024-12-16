@@ -25,20 +25,19 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
         self,
         server_details: CRCONServerDetails,
         queue: asyncio.Queue[LogStreamObject],
+        api_client: CRCONApiClient,
         loop: asyncio.AbstractEventLoop,
     ) -> None:
         self._server_details = server_details
         self._votemap_config: Optional[VoteMapUserConfig] = None
         self._queue = queue
+        self._api_client = api_client
         self._loop = loop
         self._exit_stack = contextlib.AsyncExitStack()
-        self._api_client: CRCONApiClient | None = None
 
     async def __aenter__(self) -> Self:
         await self._exit_stack.__aenter__()
-        self._api_client = await self._exit_stack.enter_async_context(
-            CRCONApiClient(server_details=self._server_details, loop=self._loop)
-        )
+        await self._exit_stack.enter_async_context(self._api_client)
         return self
 
     async def __aexit__(

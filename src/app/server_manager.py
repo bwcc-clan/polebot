@@ -4,10 +4,10 @@ import logging
 from types import TracebackType
 from typing import NoReturn, Optional, Self
 
-from .api_models import LogStreamObject
+from .api_models import LogMessageType, LogStreamObject
 from .crcon_server_details import CRCONServerDetails
 from .exceptions import TerminateTaskGroup
-from .log_stream_client import CRCONLogStreamClient, LogMessageType
+from .log_stream_client import CRCONLogStreamClient
 from .votemap_manager import VotemapManager
 
 logger = logging.getLogger(__name__)
@@ -21,28 +21,28 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
         self,
         server_details: CRCONServerDetails,
         loop: asyncio.AbstractEventLoop,
+        log_stream_client: CRCONLogStreamClient,
+        votemap_manager: VotemapManager,
         stop_event: Optional[asyncio.Event] = None,
     ) -> None:
         self.server_details = server_details
         self._loop = loop
         self._stop_event = stop_event
-
         self._queue = asyncio.Queue[LogStreamObject](_QUEUE_SIZE)
-        self._log_stream_client: CRCONLogStreamClient | None = None
-        self._votemap_manager: VotemapManager | None = None
+        self._log_stream_client = log_stream_client
+        self._votemap_manager = votemap_manager
+
         self._task_group: asyncio.TaskGroup | None = None
         self._exit_stack = contextlib.AsyncExitStack()
 
     async def __aenter__(self) -> Self:
         await self._exit_stack.__aenter__()
-        self._votemap_manager = await self._exit_stack.enter_async_context(
-            VotemapManager(self.server_details, self._queue, self._loop)
-        )
-        self._log_stream_client = await self._exit_stack.enter_async_context(
-            CRCONLogStreamClient(
-                server_details=self.server_details, queue=self._queue, log_types=[LogMessageType.match_start, LogMessageType.team_switch]
-            )
-        )
+
+        await self._exit_stack.enter_async_context(self._votemap_manager)
+
+        self._log_stream_client.log_types = [LogMessageType.match_start, LogMessageType.team_switch]
+        await self._exit_stack.enter_async_context(self._log_stream_client)
+
         return self
 
     async def __aexit__(
