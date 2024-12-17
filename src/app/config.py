@@ -21,4 +21,4 @@ def get_server_details() -> CRCONServerDetails:
 class AppConfig:
     @environ.config
     class Paths:
-        name = environ.var("weighting_config.json")
+        weighting_config = environ.var("weighting_config.json")

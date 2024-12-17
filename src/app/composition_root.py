@@ -11,11 +11,14 @@ from lagom import (
 )
 from typeguard import TypeCheckError, check_type
 
+from .api_client import CRCONApiClient
 from .api_models import LogStreamObject
 from .config import AppConfig
 from .crcon_server_details import CRCONServerDetails
 from .log_stream_client import CRCONLogStreamClient
+from .map_selector import MapSelector
 from .server_manager import ServerManager
+from .votemap_manager import VotemapManager
 
 X = TypeVar("X")
 
@@ -50,6 +53,9 @@ def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop) -> Co
         return loop
 
     define_context_dependency(container, CRCONLogStreamClient)
+    define_context_dependency(container, VotemapManager)
+    define_context_dependency(container, MapSelector)
+    define_context_dependency(container, CRCONApiClient)
 
     _container_initialized = True
     return container
@@ -70,7 +76,14 @@ def begin_server_context(
     stop_event: Optional[asyncio.Event] = None,
 ) -> ContextContainer:
     context_container = ContextContainer(
-        container, context_types=[], context_singletons=[CRCONLogStreamClient]
+        container,
+        context_types=[],
+        context_singletons=[
+            CRCONLogStreamClient,
+            VotemapManager,
+            MapSelector,
+            CRCONApiClient,
+        ],
     )
     context_container[CRCONServerDetails] = server_details
     if stop_event:
