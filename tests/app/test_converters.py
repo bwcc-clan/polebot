@@ -4,9 +4,9 @@ from types import NoneType
 from typing import Any
 
 import pytest
-from cattrs.preconf.json import JsonConverter, make_converter
-from yarl import URL
+from cattrs.preconf.json import JsonConverter
 from utils import support_files_dir
+from yarl import URL
 
 import app.converters as converters
 from app.api_models import (
@@ -23,7 +23,7 @@ from app.api_models import (
     Team,
     VoteMapUserConfig,
 )
-from app.config import ServerConfig, WeightingConfig
+from app.config import ServerConfig
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
 
@@ -199,30 +199,6 @@ def describe_structure():
             assert response.logs[1].log.player_name_1 == "Bjørn"
             assert response.logs[2].id == "1731972329-0"
             assert response.logs[2].log.action == LogMessageType.match_start
-
-
-    def describe_with_weighting_config():
-        @pytest.fixture
-        def converter() -> JsonConverter:
-            return make_converter()
-
-        @pytest.fixture
-        def contents() -> Any:
-            filepath = SUPPORT_FILES_DIR.joinpath("weighting_config.json")
-            with filepath.open() as f:
-                contents = json.load(f)
-            return contents
-
-        def can_read_config(converter: JsonConverter, contents: Any):
-            config = converter.structure(contents, WeightingConfig)
-            assert config is not None
-            assert len(config.groups) == 3
-            assert "Boost" in config.groups
-            boost1 = config.groups["Boost"]
-            assert boost1.weight == 80
-            assert boost1.repeat_factor == 0.6
-            assert len(config.environments) == 3
-
 
     def describe_with_server_config():
         @pytest.fixture

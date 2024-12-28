@@ -14,6 +14,7 @@ _logger = logging.getLogger(__name__)
 
 @frozen(kw_only=True)
 class EnvironmentGroupConfig:
+    weight: int = field(validator=[validators.ge(0), validators.le(100)])
     repeat_factor: float = field(validator=[validators.ge(0.0), validators.le(1.0)])
     environments: list[str] = field(factory=list)
 

@@ -40,16 +40,19 @@
     },
     "environments": {
       "Boost": {
+        "weight": 100,
         "repeat_factor": 1.0,
         "environments": ["day"]
       },
       "Normal": {
+        "weight": 90,
         "repeat_factor": 0.1,
-        "environments": ["rain", "overcast"]
+        "environments": ["rain", "overcast", "dusk", "dawn"]
       },
       "Unboost": {
+        "weight": 50,
         "repeat_factor": 0.0,
-        "environments": ["dusk", "night", "dawn"]
+        "environments": ["night"]
       }
     }
   }
