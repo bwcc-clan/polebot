@@ -5,7 +5,7 @@ from types import TracebackType
 from typing import NoReturn, Optional, Self
 
 from .api_models import LogMessageType, LogStreamObject
-from .crcon_server_details import CRCONServerDetails
+from .config import ServerConfig
 from .exceptions import TerminateTaskGroup
 from .log_stream_client import CRCONLogStreamClient
 from .votemap_manager import VotemapManager
@@ -19,13 +19,13 @@ _QUEUE_SIZE = 1000
 class ServerManager(contextlib.AbstractAsyncContextManager):
     def __init__(
         self,
-        server_details: CRCONServerDetails,
+        server_config: ServerConfig,
         loop: asyncio.AbstractEventLoop,
         log_stream_client: CRCONLogStreamClient,
         votemap_manager: VotemapManager,
         stop_event: Optional[asyncio.Event] = None,
     ) -> None:
-        self.server_details = server_details
+        self.server_config = server_config
         self._loop = loop
         self._stop_event = stop_event
         self._queue = asyncio.Queue[LogStreamObject](_QUEUE_SIZE)

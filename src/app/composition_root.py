@@ -13,8 +13,7 @@ from typeguard import TypeCheckError, check_type
 
 from .api_client import CRCONApiClient
 from .api_models import LogStreamObject
-from .config import AppConfig
-from .crcon_server_details import CRCONServerDetails
+from .config import AppConfig, ServerConfig
 from .log_stream_client import CRCONLogStreamClient
 from .map_selector import MapSelector
 from .server_manager import ServerManager
@@ -52,6 +51,7 @@ def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop) -> Co
     def _get_event_loop() -> asyncio.AbstractEventLoop:
         return loop
 
+    define_context_dependency(container, ServerManager)
     define_context_dependency(container, CRCONLogStreamClient)
     define_context_dependency(container, VotemapManager)
     define_context_dependency(container, MapSelector)
@@ -72,33 +72,32 @@ _QUEUE_SIZE = 1000
 
 def begin_server_context(
     container: Container,
-    server_details: CRCONServerDetails,
+    server_config: ServerConfig,
     stop_event: Optional[asyncio.Event] = None,
 ) -> ContextContainer:
     context_container = ContextContainer(
         container,
         context_types=[],
         context_singletons=[
+            ServerManager,
             CRCONLogStreamClient,
             VotemapManager,
             MapSelector,
             CRCONApiClient,
         ],
     )
-    context_container[CRCONServerDetails] = server_details
+    context_container[ServerConfig] = server_config
     if stop_event:
         context_container[asyncio.Event] = stop_event
-    context_container[asyncio.Queue[LogStreamObject]] = asyncio.Queue[LogStreamObject](
-        _QUEUE_SIZE
-    )
+    context_container[asyncio.Queue[LogStreamObject]] = asyncio.Queue[LogStreamObject](_QUEUE_SIZE)
     return context_container
 
 
 def create_server_manager(
     container: Container,
-    server_details: CRCONServerDetails,
+    server_config: ServerConfig,
     stop_event: Optional[asyncio.Event] = None,
 ) -> ServerManager:
     factory = container.magic_partial(ServerManager)
-    server_manager = factory(server_details, stop_event=stop_event)
+    server_manager = factory(server_config, stop_event=stop_event)
     return server_manager

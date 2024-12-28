@@ -11,24 +11,24 @@ from app.api_request_context import ApiRequestContext, ApiRequestParams
 
 from . import converters
 from .api_models import ApiResult, Layer, ServerStatus, VoteMapUserConfig
-from .crcon_server_details import CRCONServerDetails
+from .config import ServerConfig
 
 
 class CRCONApiClient(AbstractAsyncContextManager):
     def __init__(
-        self, server_details: CRCONServerDetails, loop: asyncio.AbstractEventLoop
+        self, server_config: ServerConfig, loop: asyncio.AbstractEventLoop
     ) -> None:
-        self._server_details = server_details
+        self._server_config = server_config
         self._loop = loop
         self._exit_stack = AsyncExitStack()
         self._session: aiohttp.ClientSession | None = None
-        self._converter = converters.rcon_converter
+        self._converter = converters.make_rcon_converter()
 
     async def __aenter__(self) -> Self:
         await self._exit_stack.__aenter__()
-        headers = {"Authorization": f"BEARER {self._server_details.api_key}"}
-        if self._server_details.rcon_headers:
-            headers.update(self._server_details.rcon_headers)
+        headers = {"Authorization": f"BEARER {self._server_config.crcon_details.api_key}"}
+        if self._server_config.crcon_details.rcon_headers:
+            headers.update(self._server_config.crcon_details.rcon_headers)
         self._session = await self._exit_stack.enter_async_context(
             aiohttp.ClientSession(loop=self._loop, headers=headers)
         )
@@ -96,7 +96,7 @@ class CRCONApiClient(AbstractAsyncContextManager):
 
         params = ApiRequestParams(
             method=method,
-            url=self._server_details.api_url / endpoint,
+            url=self._server_config.crcon_details.api_url / endpoint,
             kwargs=kwargs,
         )
         return ApiRequestContext(session=self._session, params=params)

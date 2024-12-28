@@ -68,28 +68,11 @@ exclude = ["scripts", "docs", "tests", "out", "play"]
 mypy_path = "$MYPY_CONFIG_FILE_DIR/stubs"
 
 [tool.ruff]
+exclude = ["scripts", "docs", "out", "play"]
 cache-dir = ".ruff_cache"
 line-length = 119
 indent-width = 4
 target-version = "py312"
-exclude = ["scripts", "docs", "tests", "out", "play"]
-
-[tool.ruff.lint]
-# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
-# Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
-# McCabe complexity (`C901`) by default.
-select = ["E4", "E7", "E9", "F", "T"]
-ignore = []
-
-[tool.ruff.lint.per-file-ignores]
-"*.ipynb" = ["E402"]
-
-# Allow fix for all enabled rules (when `--fix`) is provided.
-fixable = ["ALL"]
-unfixable = []
-
-# Allow unused variables when underscore-prefixed.
-dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [tool.ruff.format]
 # Like Black, use double quotes for strings.
@@ -99,5 +82,22 @@ indent-style = "space"
 # Like Black, respect magic trailing commas.
 skip-magic-trailing-comma = false
 
+[tool.ruff.lint]
+# Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
+# Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
+# McCabe complexity (`C901`) by default.
+select = ["E", "W", "F", "T"]
+ignore = []
+
+# Allow fix for all enabled rules (when `--fix`) is provided.
+fixable = ["ALL"]
+unfixable = []
+
+# Allow unused variables when underscore-prefixed.
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
+
 [tool.ruff.lint.isort]
 known-local-folder = ["src"]
+
+[tool.ruff.lint.per-file-ignores]
+"*.ipynb" = ["E402"]

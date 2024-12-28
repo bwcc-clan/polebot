@@ -23,7 +23,6 @@ def configure_logger(log_path: str, log_level: str = "INFO") -> None:
     q = Queue()  # type: ignore
     os.makedirs(log_path, exist_ok=True)
     logfile = os.path.join(log_path, "votemapper.log")
-    print(f"Logging to {logfile}")
     logging.config.dictConfig(
         {
             "version": 1,

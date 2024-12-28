@@ -17,7 +17,7 @@ from websockets.asyncio.client import (
 
 from . import converters
 from .api_models import LogMessageType, LogStreamObject, LogStreamResponse
-from .crcon_server_details import CRCONServerDetails
+from .config import ServerConfig
 from .exceptions import LogStreamMessageError
 from .utils import backoff
 
@@ -27,18 +27,18 @@ logger = logging.getLogger(__name__)
 class CRCONLogStreamClient:
     def __init__(
         self,
-        server_details: CRCONServerDetails,
+        server_config: ServerConfig,
         queue: asyncio.Queue[LogStreamObject],
         log_types: Optional[list[LogMessageType]] = None,
     ):
-        self.server_details = server_details
+        self.server_config = server_config
         self._queue = queue
         self.log_types: list[LogMessageType] | None = log_types
 
-        self.websocket_url = self.server_details.websocket_url / "ws/logs"
+        self.websocket_url = self.server_config.crcon_details.websocket_url / "ws/logs"
         self.last_seen_id: str | None = None
         self._first_connection = True
-        self._converter = converters.rcon_converter
+        self._converter = converters.make_rcon_converter()
         self._exit_stack = contextlib.AsyncExitStack()
 
     async def __aenter__(self) -> Self:
@@ -101,9 +101,9 @@ class CRCONLogStreamClient:
             raise
 
     def _connect(self) -> websockets.connect:
-        headers = {"Authorization": f"Bearer {self.server_details.api_key}"}
-        if self.server_details.rcon_headers:
-            headers.update(self.server_details.rcon_headers)
+        headers = {"Authorization": f"Bearer {self.server_config.crcon_details.api_key}"}
+        if self.server_config.crcon_details.rcon_headers:
+            headers.update(self.server_config.crcon_details.rcon_headers)
 
         # Note that we handle exceptions more aggressively on first connection, because e.g. DNS errors are more
         # likely to be configuration mistakes. On subsequent re-connection attempts, since the configuration has

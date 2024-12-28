@@ -3,9 +3,10 @@ import asyncio
 import pytest
 import pytest_asyncio
 from aioresponses import aioresponses
+from yarl import URL
 
 from app.api_client import CRCONApiClient
-from app.crcon_server_details import CRCONServerDetails
+from app.config import ServerConfig, ServerCRCONDetails, WeightingConfig
 
 
 def describe_when_not_entered():
@@ -19,8 +20,13 @@ def describe_when_not_entered():
 
     @pytest.fixture()
     def sut(current_loop: asyncio.AbstractEventLoop) -> CRCONApiClient:
-        server_details = CRCONServerDetails(api_base_url="https://my.example.com", api_key="1234567890")
-        return CRCONApiClient(server_details=server_details, loop=current_loop)
+        server_details = ServerCRCONDetails(api_url=URL("https://my.example.com"), api_key="1234567890")
+        server_config = ServerConfig(
+            server_name="Test",
+            crcon_details=server_details,
+            weighting_config=WeightingConfig(environments={}, groups={}),
+        )
+        return CRCONApiClient(server_config=server_config, loop=current_loop)
 
     @pytest.mark.asyncio()
     async def get_status_raises_exception(sut: CRCONApiClient):
@@ -46,12 +52,16 @@ def describe_when_entered():
 
     @pytest_asyncio.fixture()
     async def sut(current_loop: asyncio.AbstractEventLoop):
-        server_details = CRCONServerDetails(api_base_url="https://my.example.com", api_key="1234567890")
-        async with CRCONApiClient(server_details=server_details, loop=current_loop) as sut:
+        server_details = ServerCRCONDetails(api_url=URL("https://my.example.com"), api_key="1234567890")
+        server_config = ServerConfig(
+            server_name="Test",
+            crcon_details=server_details,
+            weighting_config=WeightingConfig(environments={}, groups={}),
+        )
+        async with CRCONApiClient(server_config=server_config, loop=current_loop) as sut:
             yield sut
 
     def describe_get_status():
-
         DEFAULT_RESULT = {
             "result": {
                 "name": "My Server",

@@ -18,7 +18,8 @@ class MapSelector:
             server_status (ServerStatus): The current server status.
             layers (Iterable[Layer]): A list of layers that the server supports.
             votemap_config (VoteMapUserConfig): The server's votemap configuration.
-            map_history (Iterable[str]): An ordered list of the most recently played map layer IDs, most-recently-played last.
+            map_history (Iterable[str]): An ordered list of the most recently played map layer IDs,
+            most-recently-played last.
         """
         self._server_status = server_status
         self._layers = {layer.id: layer for layer in layers}
@@ -30,7 +31,7 @@ class MapSelector:
         recent_map_history = [x for x in self._map_history[-recent_history_count:]]
 
         gen = WeightingGenerator(self._layers, recent_map_history)
-        return None
+        return []
 
 
 class WeightingGenerator:

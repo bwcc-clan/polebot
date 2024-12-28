@@ -1,9 +1,11 @@
 import json
+import os
 from types import NoneType
 from typing import Any
 
 import pytest
 from cattrs.preconf.json import JsonConverter, make_converter
+from yarl import URL
 from utils import support_files_dir
 
 import app.converters as converters
@@ -21,7 +23,7 @@ from app.api_models import (
     Team,
     VoteMapUserConfig,
 )
-from app.models import WeightingConfig
+from app.config import ServerConfig, WeightingConfig
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
 
@@ -30,7 +32,7 @@ def describe_structure():
     def describe_with_simple_result():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.rcon_converter
+            return converters.make_config_converter()
 
         def success_result(converter: JsonConverter):
             json_content = """
@@ -73,7 +75,7 @@ def describe_structure():
     def describe_with_get_maps():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.rcon_converter
+            return converters.make_rcon_converter()
 
         @pytest.fixture
         def contents() -> Any:
@@ -130,7 +132,7 @@ def describe_structure():
     def describe_with_get_votemap_config():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.rcon_converter
+            return converters.make_rcon_converter()
 
         @pytest.fixture
         def contents() -> Any:
@@ -151,7 +153,7 @@ def describe_structure():
     def describe_with_set_votemap_whitelist():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.rcon_converter
+            return converters.make_rcon_converter()
 
         @pytest.fixture
         def contents() -> Any:
@@ -176,7 +178,7 @@ def describe_structure():
     def describe_with_logstream_response():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.rcon_converter
+            return converters.make_rcon_converter()
 
         @pytest.fixture
         def contents() -> Any:
@@ -220,3 +222,33 @@ def describe_structure():
             assert boost1.weight == 80
             assert boost1.repeat_factor == 0.6
             assert len(config.environments) == 3
+
+
+    def describe_with_server_config():
+        @pytest.fixture
+        def converter() -> JsonConverter:
+            return converters.make_config_converter()
+
+        @pytest.fixture
+        def contents() -> Any:
+            filepath = SUPPORT_FILES_DIR.joinpath("server_config.json")
+            with filepath.open() as f:
+                contents = json.load(f)
+            return contents
+
+        def can_read_config(converter: JsonConverter, contents: Any):
+            os.environ["SOME_ENV_VAR"] = "magic_value"
+            config = converter.structure(contents, ServerConfig)
+            assert config is not None
+            assert config.server_name == "My Test Server"
+            assert config.crcon_details is not None
+            assert config.crcon_details.api_url == URL("https://hll.example.com")
+            assert config.crcon_details.api_key == "magic_value"
+            assert config.weighting_config is not None
+
+            assert len(config.weighting_config.groups) == 3
+            assert "Boost" in config.weighting_config.groups
+            boost1 = config.weighting_config.groups["Boost"]
+            assert boost1.weight == 80
+            assert boost1.repeat_factor == 0.6
+            assert len(config.weighting_config.environments) == 3

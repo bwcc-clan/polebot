@@ -13,8 +13,7 @@ from .composition_root import (
     begin_server_context,
     init_container,
 )
-from .config import AppConfig, get_server_details
-from .crcon_server_details import CRCONServerDetails
+from .config import AppConfig, ServerConfig, get_server_config
 from .logging_utils import configure_logger
 from .server_manager import ServerManager
 
@@ -41,24 +40,24 @@ def shutdown(sig: signal.Signals) -> None:
 
 
 async def run_server_manager(
-    server_details: CRCONServerDetails, container: Container
+    server_config: ServerConfig, container: Container
 ) -> None:
     with begin_server_context(
-        container, server_details, _stop_event
+        container, server_config, _stop_event
     ) as context_container:
         server_manager = context_container[ServerManager]
         async with server_manager:
             await server_manager.run()
 
-
 async def async_main(loop: asyncio.AbstractEventLoop) -> None:
     load_dotenv()
     cfg = environ.to_config(AppConfig)
     container = init_container(app_config=cfg, loop=loop)
+
     async with asyncio.TaskGroup() as tg:
-        server_details = get_server_details()
+        server_config = get_server_config(cfg)
         tg.create_task(
-            run_server_manager(server_details, container), name="server-manager"
+            run_server_manager(server_config, container), name="server-manager"
         )
 
 

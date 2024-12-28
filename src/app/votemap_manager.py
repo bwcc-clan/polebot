@@ -15,7 +15,7 @@ from .api_models import (
     ServerStatus,
     VoteMapUserConfig,
 )
-from .crcon_server_details import CRCONServerDetails
+from .config import ServerConfig
 
 logger = logging.getLogger(__name__)
 
@@ -23,12 +23,12 @@ logger = logging.getLogger(__name__)
 class VotemapManager(contextlib.AbstractAsyncContextManager):
     def __init__(
         self,
-        server_details: CRCONServerDetails,
+        server_config: ServerConfig,
         queue: asyncio.Queue[LogStreamObject],
         api_client: CRCONApiClient,
         loop: asyncio.AbstractEventLoop,
     ) -> None:
-        self._server_details = server_details
+        self._server_config = server_config
         self._votemap_config: Optional[VoteMapUserConfig] = None
         self._queue = queue
         self._api_client = api_client
@@ -78,7 +78,7 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
         status = await self._get_server_status()
         layers = await self._get_server_maps()
         votemap_config = await self._get_votemap_config()
-        map_history = [status.map.map.id]
+        map_history = [status.map.id]
         print(status)
         print(layers)
         print(votemap_config)

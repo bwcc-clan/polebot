@@ -88,6 +88,7 @@ class ApiResult[TResult]:
     """
     The standard wrapper for the result of an API call. The payload, if any, is in the `result` attribute.
     """
+
     command: str
     failed: bool
     error: Optional[str]
@@ -201,7 +202,8 @@ To never see this message again type in the chat !votemap never
 To renable type: !votemap allow"""
 THANK_YOU_TEXT = "Thanks {player_name}, vote registered for:\n{map_name}"
 NO_VOTE_TEXT = "No votes recorded yet"
-HELP_TEXT = """To vote you must type in the chat (press K to open the chat) !votemap followed by the number of the map you want (from 0 to N), you must write the number without the brackets, e.g.: !votemap 0
+HELP_TEXT = """To vote you must type in the chat (press K to open the chat) !votemap followed by the number of the map\
+    you want (from 0 to N), you must write the number without the brackets, e.g.: !votemap 0
 
 The map numbers appear in the reminder message you get once in a while or if you type !votemap without a number.
 
