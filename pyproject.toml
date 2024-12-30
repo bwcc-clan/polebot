@@ -53,7 +53,7 @@ asyncio_default_fixture_loop_scope = "function"
 
 [tool.pyright]
 include = ["src"]
-exclude = ["scripts", "docs", "tests", "out"]
+exclude = ["scripts", "docs", "out"]
 reportMissingImports = "error"
 reportOptionalMemberAccess = false
 reportGeneralTypeIssues = true
@@ -68,8 +68,14 @@ show_error_codes = true
 no_implicit_optional = true
 warn_return_any = true
 warn_unused_ignores = true
-exclude = ["scripts", "docs", "tests", "out", "play"]
+exclude = ["scripts", "docs", "out", "play"]
 mypy_path = "$MYPY_CONFIG_FILE_DIR/stubs"
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+disallow_untyped_defs = false
+
 
 [tool.ruff]
 exclude = ["scripts", "docs", "out", "play"]
