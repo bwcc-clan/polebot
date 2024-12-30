@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Iterable, Sequence
+from itertools import chain
 
 import numpy as np
 import pandas as pd
@@ -54,26 +55,34 @@ class MapSelector:
         self._df_offensive = map_data.df_offensive
         self._df_skirmish = map_data.df_skirmish
 
-    def get_warfare(self) -> set[str]:
+
+    def get_selection(self) -> Iterable[str]:
+        warfare = self._get_warfare()
+        offensive = self._get_offensive()
+        skirmish = self._get_skirmish()
+
+        return chain(warfare, offensive, skirmish)
+
+    def _get_warfare(self) -> Iterable[str]:
         df = self._prepare_dataframe(self._df_warfare)
         count = self._votemap_config.num_warfare_options
 
         return self._select_layers(df, count)
 
-    def get_offensive(self) -> set[str]:
+    def _get_offensive(self) -> Iterable[str]:
         if (
             self._current_layer.game_mode == GameMode.OFFENSIVE
             and not self._votemap_config.allow_consecutive_offensives
         ):
-            return set()
+            return []
 
         df = self._prepare_dataframe(self._df_offensive)
         count = self._votemap_config.num_offensive_options
         return self._select_layers(df, count)
 
-    def get_skirmish(self) -> set[str]:
+    def _get_skirmish(self) -> Iterable[str]:
         if self._current_layer.game_mode in _SKIRMISH_MODES and not self._votemap_config.allow_consecutive_skirmishes:
-            return set()
+            return []
 
         df = self._prepare_dataframe(self._df_skirmish)
         count = self._votemap_config.num_skirmish_control_options
@@ -126,10 +135,10 @@ class MapSelector:
 
         # Always exclude the current layer (map) from selection. Also remove previous n layers from history if
         # configured
-        standard_exclusions = {self._current_layer.id} & set(
+        standard_exclusions = {self._current_layer.id} | set(
             self._recent_layer_history[: self._votemap_config.number_last_played_to_exclude]
         )
-        df[~df["id"].isin(standard_exclusions)]
+        df = df[~df["id"].isin(standard_exclusions)]
 
         current_side = self._current_layer.attackers
 

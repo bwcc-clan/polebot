@@ -3,6 +3,7 @@ import contextlib
 import logging
 from collections import deque
 from collections.abc import Iterable
+from itertools import chain
 from types import TracebackType
 from typing import Any, Optional, Self
 
@@ -98,7 +99,7 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
 
     async def _process_map_started(self) -> None:
         logger.info("Processing map started")
-        selection = await self._generate_votemap_selection()
+        selection = list(await self._generate_votemap_selection())
         if len(selection):
             await self._set_votemap_selection(selection)
 
@@ -110,7 +111,7 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
         current_map = status.map.id
         self._layer_history.appendleft(current_map)
 
-    async def _generate_votemap_selection(self) -> set[str]:
+    async def _generate_votemap_selection(self) -> Iterable[str]:
         logger.debug("Generating a votemap selection")
         status = await self._get_server_status()
         layers = await self._get_server_maps()
@@ -124,11 +125,11 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
             votemap_config=votemap_config,
             recent_layer_history=self._layer_history,
         )
-        selection = selector.get_warfare() | selector.get_offensive() | selector.get_skirmish()
+        selection = chain(selector._get_warfare(), selector._get_offensive(), selector._get_skirmish())
         logger.debug("Selection: [%s]", ",".join(selection))
         return selection
 
-    async def _set_votemap_selection(self, selection: set[str]) -> None:
+    async def _set_votemap_selection(self, selection: Iterable[str]) -> None:
         logger.info("Setting votemap selection to [%s]", ",".join(selection))
         assert self._api_client
         try:
