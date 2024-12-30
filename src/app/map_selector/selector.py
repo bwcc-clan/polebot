@@ -1,15 +1,18 @@
 import logging
-from collections.abc import Callable, Iterable, Sequence
-from typing import Optional
+from collections.abc import Iterable, Sequence
 
 import numpy as np
 import pandas as pd
 
-from ..api_models import GameMode, Layer, ServerStatus, Team, VoteMapUserConfig
+from ..api_models import GameMode, Layer, ServerStatus, VoteMapUserConfig
 from ..config import ServerConfig
 from .config_loader import get_config_dataframes, get_layer_dataframes
 
 _logger = logging.getLogger(__name__)
+
+
+_SKIRMISH_MODES = {GameMode.CONTROL, GameMode.MAJORITY, GameMode.PHASED}
+
 
 class MapSelector:
     def __init__(
@@ -51,12 +54,6 @@ class MapSelector:
         self._df_offensive = map_data.df_offensive
         self._df_skirmish = map_data.df_skirmish
 
-        # Always exclude the current layer (map) from selection. Also remove previous n layers from history if
-        # configured
-        self._standard_exclusions = {self._current_layer.id} & set(
-                self._recent_layer_history[: self._votemap_config.number_last_played_to_exclude]
-            )
-
     def get_warfare(self) -> set[str]:
         df = self._prepare_dataframe(self._df_warfare)
         count = self._votemap_config.num_warfare_options
@@ -64,48 +61,21 @@ class MapSelector:
         return self._select_layers(df, count)
 
     def get_offensive(self) -> set[str]:
-        disallow_attackers: Optional[Team] = None
-        if self._current_layer.game_mode == GameMode.OFFENSIVE:
-            if not self._votemap_config.allow_consecutive_offensives:
-                return set()
-            if not self._votemap_config.allow_consecutive_offensives_opposite_sides:
-                disallow_attackers = Team.AXIS if self._current_layer.attackers == Team.ALLIES else Team.ALLIES
+        if (
+            self._current_layer.game_mode == GameMode.OFFENSIVE
+            and not self._votemap_config.allow_consecutive_offensives
+        ):
+            return set()
 
-
-        def process_exclusions(df: pd.DataFrame) -> pd.DataFrame:
-
-            if self._votemap_config.consider_offensive_same_map:
-                maps_to_exclude = {
-                    self._layers_by_id[layer].map.id
-                    for layer in self._recent_layer_history[: self._votemap_config.number_last_played_to_exclude]
-                }
-                df = df[~df["map.id"].isin(maps_to_exclude)]
-
-            if disallow_attackers:
-                df = df[~df["attackers"] == disallow_attackers]
-
-            return df
-
-        df = self._prepare_dataframe(self._df_offensive, prepare=process_exclusions)
+        df = self._prepare_dataframe(self._df_offensive)
         count = self._votemap_config.num_offensive_options
         return self._select_layers(df, count)
 
     def get_skirmish(self) -> set[str]:
-        if self._current_layer.game_mode == GameMode.CONTROL and not self._votemap_config.allow_consecutive_skirmishes:
+        if self._current_layer.game_mode in _SKIRMISH_MODES and not self._votemap_config.allow_consecutive_skirmishes:
             return set()
 
-        def process_exclusions(df: pd.DataFrame) -> pd.DataFrame:
-
-            if self._votemap_config.consider_skirmishes_as_same_map:
-                maps_to_exclude = {
-                    self._layers_by_id[layer].map.id
-                    for layer in self._recent_layer_history[: self._votemap_config.number_last_played_to_exclude]
-                }
-                df = df[~df["map.id"].isin(maps_to_exclude)]
-
-            return df
-
-        df = self._prepare_dataframe(self._df_skirmish, prepare=process_exclusions)
+        df = self._prepare_dataframe(self._df_skirmish)
         count = self._votemap_config.num_skirmish_control_options
         return self._select_layers(df, count)
 
@@ -151,21 +121,41 @@ class MapSelector:
 
         return selected_layers
 
-    def _prepare_dataframe(
-        self, df: pd.DataFrame, prepare: Callable[[pd.DataFrame], pd.DataFrame] | None = None
-    ) -> pd.DataFrame:
+    def _prepare_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+        # Step 1 - filter out layers that should not be considered, by using the same logic as the CRCON code
 
-        df[~df["id"].isin(self._standard_exclusions)]
-        if prepare:
-            df = prepare(df)
+        # Always exclude the current layer (map) from selection. Also remove previous n layers from history if
+        # configured
+        standard_exclusions = {self._current_layer.id} & set(
+            self._recent_layer_history[: self._votemap_config.number_last_played_to_exclude]
+        )
+        df[~df["id"].isin(standard_exclusions)]
 
-        # Calculate the number of instances of each map.id
+        current_side = self._current_layer.attackers
+
+        if self._votemap_config.consider_offensive_same_map or self._votemap_config.consider_skirmishes_as_same_map:
+            maps_to_exclude = {
+                self._layers_by_id[layer].map.id
+                for layer in self._recent_layer_history[: self._votemap_config.number_last_played_to_exclude]
+            }
+            df = df[~df["map.id"].isin(maps_to_exclude)]
+
+        # In the CRCON code (vote_map.py), the logic is map.opposite_side != current_side - with a todo comment 'make
+        # sure this is correct' 😀
+        #
+        # We don't have an opposite_side column, but in CRCON it's calculated as 'the opposite side from the attackers'.
+        # So we can just use the attackers column here and invert the condition.
+        if self._votemap_config.allow_consecutive_offensives_opposite_sides and current_side:
+            df = df[~df["attackers"] == current_side]
+
+        # Step 2 - Calculate the number of instances of each map.id
         map_instance_counts = df.groupby(["map.id"], observed=True).size()
         map_instance_counts.name = "map_instance_count"
 
         environment_instance_counts = df.groupby(["environment"], observed=True).size()
         environment_instance_counts.name = "environment_instance_count"
 
+        # Step 3 - Join the instance counts and map data back to the main dataframe
         df = (
             df.join(
                 map_instance_counts,
@@ -182,19 +172,23 @@ class MapSelector:
             .join(self._df_environments, on="environment")
         )
 
-        # Validate that all maps are configured - if there are any maps on the server that we haven't had configured
-        # then all we can do is log and drop them
+        # Step 4 -Validate that all maps are configured
+
+        # If there are any maps on the server that haven't been configured into a group then all we can do is log and
+        # drop them
         nan_rows = df.loc[df["map_group"].isnull()]
         if len(nan_rows):
             vals = ",".join(nan_rows["map.id"].unique().tolist())
             self._logger.warning("No map groups configured for: %s", vals)
-        # Validate that all environments are configured
+        # Same for environments - drop if not configured
         nan_rows = df.loc[df["environment_category"].isnull()]
         if len(nan_rows):
             vals = ",".join(nan_rows["environment"].tolist())
             self._logger.warning("No environment groups configured for: %s", vals)
         df = df.dropna(subset=["map_group", "environment_category"])
 
+        # Step 5 - Calculate the map and environment weights
+        #
         # The normalization factors address the fact that some map_ids have more instances (layers) than others, and the
         # same for environments. Without normalization, this would make it more likely to select a map with more layers,
         # or an environment with more instances, which would skew the selection.
