@@ -15,9 +15,7 @@ from .config import ServerConfig
 
 
 class CRCONApiClient(AbstractAsyncContextManager):
-    def __init__(
-        self, server_config: ServerConfig, loop: asyncio.AbstractEventLoop
-    ) -> None:
+    def __init__(self, server_config: ServerConfig, loop: asyncio.AbstractEventLoop) -> None:
         self._server_config = server_config
         self._loop = loop
         self._exit_stack = AsyncExitStack()
@@ -49,15 +47,11 @@ class CRCONApiClient(AbstractAsyncContextManager):
         await self.__aexit__(None, None, None)
 
     async def get_status(self) -> ServerStatus:
-        result = await self._call_api(
-            result_type=ServerStatus, method=aiohttp.hdrs.METH_GET, endpoint="api/get_status"
-        )
+        result = await self._call_api(result_type=ServerStatus, method=aiohttp.hdrs.METH_GET, endpoint="api/get_status")
         return result
 
     async def get_maps(self) -> Iterable[Layer]:
-        result = await self._call_api(
-            result_type=list[Layer], method=aiohttp.hdrs.METH_GET, endpoint="api/get_maps"
-        )
+        result = await self._call_api(result_type=list[Layer], method=aiohttp.hdrs.METH_GET, endpoint="api/get_maps")
         return result
 
     async def get_votemap_config(self) -> VoteMapUserConfig:
@@ -76,11 +70,8 @@ class CRCONApiClient(AbstractAsyncContextManager):
         )
         return result
 
-
     async def set_votemap_whitelist(self, map_names: Iterable[str]) -> None:
-        body = {
-            "map_names": list(map_names)
-        }
+        body = {"map_names": list(map_names)}
         await self._call_api(
             result_type=NoneType,
             method=aiohttp.hdrs.METH_POST,
@@ -104,9 +95,7 @@ class CRCONApiClient(AbstractAsyncContextManager):
         endpoint: str,
         **kwargs: Unpack[aiohttp.client._RequestOptions],
     ) -> T:
-        async with self._make_request(
-            method=method, endpoint=endpoint, **kwargs
-        ) as resp:
+        async with self._make_request(method=method, endpoint=endpoint, **kwargs) as resp:
             j = await resp.json()
         api_result = self._converter.structure(j, ApiResult[result_type])  # type: ignore[valid-type]
         if api_result.failed:
