@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import logging
+from collections import deque
 from collections.abc import Iterable
 from types import TracebackType
 from typing import Any, Optional, Self
@@ -38,6 +39,7 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
         self._loop = loop
         self._exit_stack = contextlib.AsyncExitStack()
         self._cache = cachetools.TLRUCache(maxsize=100, ttu=cache_item_ttu)
+        self._layer_history: deque[str] = deque(maxlen=10)
 
     async def __aenter__(self) -> Self:
         await self._exit_stack.__aenter__()
@@ -69,12 +71,24 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
         return self._cache
 
     async def _receive_and_process_message(self) -> None:
+        """
+        This is the main message processing loop. It will block until a message is received from the queue, then process
+        it. It swallows all Exceptions (therefore not system exceptions).
+
+        Note that the message types are filtered in the log stream client, so we only expect to receive messages that
+        pass the filter. If you add new message types to the filter, you will need to update this method to handle them,
+        and vice-versa. Likewise if you remove message types. Keep them in sync. The filter is configured in the server
+        manager class.
+        """
+
         log = await self._queue.get()
         try:
             logger.debug("Message received of type %s", log.log.action)
             match log.log.action:
-                case LogMessageType.match_start | LogMessageType.team_switch:
+                case LogMessageType.match_start:
                     await self._process_map_started()
+                case LogMessageType.match_end:
+                    await self._process_map_ended()
                 case _:
                     logger.warning("Unsupported log message type: %s", log.log.action)
         except Exception as ex:
@@ -88,6 +102,14 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
         if len(selection):
             await self._set_votemap_selection(selection)
 
+    async def _process_map_ended(self) -> None:
+        logger.info("Processing map ended")
+
+        status = await self._get_server_status()
+        logger.debug("Saving current map [%s] to layer history", status.map.id)
+        current_map = status.map.id
+        self._layer_history.appendleft(current_map)
+
     async def _generate_votemap_selection(self) -> set[str]:
         logger.debug("Generating a votemap selection")
         status = await self._get_server_status()
@@ -95,7 +117,13 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
         votemap_config = await self._get_votemap_config()
         votemap_whitelist = await self._get_votemap_whitelist()
         layers = [layer for layer in layers if layer.id in votemap_whitelist]
-        selector = MapSelector(status, layers, self._server_config, votemap_config, [])
+        selector = MapSelector(
+            server_status=status,
+            layers=layers,
+            server_config=self._server_config,
+            votemap_config=votemap_config,
+            recent_layer_history=self._layer_history,
+        )
         selection = selector.get_warfare() | selector.get_offensive() | selector.get_skirmish()
         logger.debug("Selection: [%s]", ",".join(selection))
         return selection

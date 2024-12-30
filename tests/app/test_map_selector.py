@@ -1,4 +1,5 @@
 import json
+from collections import deque
 
 import pytest
 from utils import support_files_dir
@@ -102,6 +103,25 @@ def describe_get_warfare():
 
             # *** ACT ***
             result = sut.get_skirmish()
+
+            # *** ASSERT ***
+            assert len(result) == 6
+
+    def describe_with_map_history_as_deque():
+        def selects_configured_number_of_warfare(
+            standard_config: ServerConfig, standard_status: ServerStatus, standard_layers_by_id: dict[str, Layer]
+        ):
+            # *** ARRANGE ***
+            vmuc = VoteMapUserConfig(num_warfare_options=6, number_last_played_to_exclude=1)
+            recent_layer_history = deque(
+                ["carentan_warfare_night", "omahabeach_warfare_day", "stmariedumont_warfare_day"], maxlen=3
+            )
+            sut = MapSelector(
+                standard_status, list(standard_layers_by_id.values()), standard_config, vmuc, recent_layer_history
+            )
+
+            # *** ACT ***
+            result = sut.get_warfare()
 
             # *** ASSERT ***
             assert len(result) == 6

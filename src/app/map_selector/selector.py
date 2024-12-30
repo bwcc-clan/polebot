@@ -29,14 +29,14 @@ class MapSelector:
             layers (Iterable[Layer]): A list of layers that the server supports.
             server_config (ServerConfig): The configuration settings for the server.
             votemap_config (VoteMapUserConfig): The server's votemap configuration.
-            recent_layer_history (Iterable[str]): An ordered list of the most recently played map layer IDs,
+            recent_layer_history (Sequence[str]): An ordered list of the most recently played map layer IDs,
             most-recently-played last.
             logger (logging.Logger): The logger.
         """
 
         self._server_status = server_status
         self._layers = layers
-        self._recent_layer_history = recent_layer_history
+        self._recent_layer_history = list(recent_layer_history)
         self._votemap_config = votemap_config
         self._logger = logger
 
@@ -54,8 +54,8 @@ class MapSelector:
         # Always exclude the current layer (map) from selection. Also remove previous n layers from history if
         # configured
         self._standard_exclusions = {self._current_layer.id} & set(
-            self._recent_layer_history[: self._votemap_config.number_last_played_to_exclude]
-        )
+                self._recent_layer_history[: self._votemap_config.number_last_played_to_exclude]
+            )
 
     def get_warfare(self) -> set[str]:
         df = self._prepare_dataframe(self._df_warfare)

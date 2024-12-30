@@ -40,7 +40,7 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
 
         await self._exit_stack.enter_async_context(self._votemap_manager)
 
-        self._log_stream_client.log_types = [LogMessageType.match_start, LogMessageType.team_switch]
+        self._log_stream_client.log_types = [LogMessageType.match_start, LogMessageType.match_end]
         await self._exit_stack.enter_async_context(self._log_stream_client)
 
         return self
