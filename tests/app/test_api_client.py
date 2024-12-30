@@ -3,7 +3,6 @@ import asyncio
 import pytest
 import pytest_asyncio
 from aioresponses import aioresponses
-from yarl import URL
 
 from app.api_client import CRCONApiClient
 from app.config import ServerConfig, ServerCRCONDetails, WeightingConfig
@@ -20,7 +19,7 @@ def describe_when_not_entered():
 
     @pytest.fixture()
     def sut(current_loop: asyncio.AbstractEventLoop) -> CRCONApiClient:
-        server_details = ServerCRCONDetails(api_url=URL("https://my.example.com"), api_key="1234567890")
+        server_details = ServerCRCONDetails(api_url="https://my.example.com", api_key="1234567890")
         server_config = ServerConfig(
             server_name="Test",
             crcon_details=server_details,
@@ -52,7 +51,7 @@ def describe_when_entered():
 
     @pytest_asyncio.fixture()
     async def sut(current_loop: asyncio.AbstractEventLoop):
-        server_details = ServerCRCONDetails(api_url=URL("https://my.example.com"), api_key="1234567890")
+        server_details = ServerCRCONDetails(api_url="https://my.example.com", api_key="1234567890")
         server_config = ServerConfig(
             server_name="Test",
             crcon_details=server_details,

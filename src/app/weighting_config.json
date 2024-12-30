@@ -2,7 +2,7 @@
   "groups": {
       "Boost": {
           "weight": 80,
-          "repeat_factor": 0.6,
+          "repeat_decay": 0.6,
           "maps": [
               "carentan",
               "omahabeach",
@@ -13,7 +13,7 @@
       },
       "Normal": {
           "weight": 50,
-          "repeat_factor": 0.25,
+          "repeat_decay": 0.25,
           "maps": [
               "elsenbornridge",
               "foy",
@@ -28,24 +28,24 @@
       },
       "Unboost": {
           "weight": 30,
-          "repeat_factor": 0,
+          "repeat_decay": 0,
           "maps": ["driel", "elalamein", "remagen"]
       }
   },
   "environments": {
       "Boost": {
-          "repeat_factor": 1.0,
+          "repeat_decay": 1.0,
           "environments": ["day"]
       },
       "Normal": {
-          "repeat_factor": 0.1,
+          "repeat_decay": 0.1,
           "environments": [
               "rain",
               "overcast"
           ]
       },
       "Unboost": {
-          "repeat_factor": 0.0,
+          "repeat_decay": 0.0,
           "environments": [
               "dusk",
               "night",

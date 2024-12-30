@@ -15,7 +15,7 @@ from .api_client import CRCONApiClient
 from .api_models import LogStreamObject
 from .config import AppConfig, ServerConfig
 from .log_stream_client import CRCONLogStreamClient
-from .map_selector import MapSelector
+from .map_selector.selector import MapSelector
 from .server_manager import ServerManager
 from .votemap_manager import VotemapManager
 
@@ -60,12 +60,6 @@ def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop) -> Co
     _container_initialized = True
     return container
 
-
-# context_container = ContextContainer(
-#     container,
-#     context_types=[],
-#     context_singletons=[AnalyzeTextFileProcessor, AnalyzeRegisterEntityProcessor, DocumentAnalyzer],
-# )
 
 _QUEUE_SIZE = 1000
 

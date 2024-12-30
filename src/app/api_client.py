@@ -1,7 +1,7 @@
 import asyncio
 from collections.abc import Iterable
 from contextlib import AbstractAsyncContextManager, AsyncExitStack
-from types import TracebackType
+from types import NoneType, TracebackType
 from typing import Self, Type, Unpack
 
 import aiohttp
@@ -50,27 +50,56 @@ class CRCONApiClient(AbstractAsyncContextManager):
 
     async def get_status(self) -> ServerStatus:
         result = await self._call_api(
-            type=ServerStatus, method=aiohttp.hdrs.METH_GET, endpoint="api/get_status"
+            result_type=ServerStatus, method=aiohttp.hdrs.METH_GET, endpoint="api/get_status"
         )
         return result
 
     async def get_maps(self) -> Iterable[Layer]:
         result = await self._call_api(
-            type=list[Layer], method=aiohttp.hdrs.METH_GET, endpoint="api/get_maps"
+            result_type=list[Layer], method=aiohttp.hdrs.METH_GET, endpoint="api/get_maps"
         )
         return result
 
     async def get_votemap_config(self) -> VoteMapUserConfig:
         result = await self._call_api(
-            type=VoteMapUserConfig,
+            result_type=VoteMapUserConfig,
             method=aiohttp.hdrs.METH_GET,
             endpoint="api/get_votemap_config",
         )
         return result
 
+    async def get_votemap_whitelist(self) -> Iterable[str]:
+        result = await self._call_api(
+            result_type=list[str],
+            method=aiohttp.hdrs.METH_GET,
+            endpoint="api/get_votemap_whitelist",
+        )
+        return result
+
+
+    async def set_votemap_whitelist(self, map_names: Iterable[str]) -> None:
+        body = {
+            "map_names": list(map_names)
+        }
+        await self._call_api(
+            result_type=NoneType,
+            method=aiohttp.hdrs.METH_POST,
+            endpoint="api/set_votemap_whitelist",
+            json=body,
+        )
+
+    async def reset_votemap_state(self) -> None:
+        body: dict[str, str] = {}
+        await self._call_api(
+            result_type=NoneType,
+            method=aiohttp.hdrs.METH_POST,
+            endpoint="api/reset_votemap_state",
+            json=body,
+        )
+
     async def _call_api[T](
         self,
-        type: Type[T],
+        result_type: Type[T],
         method: str,
         endpoint: str,
         **kwargs: Unpack[aiohttp.client._RequestOptions],
@@ -79,9 +108,12 @@ class CRCONApiClient(AbstractAsyncContextManager):
             method=method, endpoint=endpoint, **kwargs
         ) as resp:
             j = await resp.json()
-        api_result = self._converter.structure(j, ApiResult[type])  # type: ignore[valid-type]
+        api_result = self._converter.structure(j, ApiResult[result_type])  # type: ignore[valid-type]
         if api_result.failed:
             raise RuntimeError(f"{endpoint} call failed")
+
+        if result_type is NoneType:
+            return  # type: ignore[return-value]
         assert api_result.result is not None
         return api_result.result
 

@@ -1,3 +1,5 @@
+# Performs retrying on requests to the CRCON API.
+# Based on https://github.com/inyutin/aiohttp_retry
 import abc
 import asyncio
 import logging

@@ -1,11 +1,8 @@
-from types import NoneType
+
 from typing import Any
 
-from cattrs.gen import make_dict_structure_fn, override
 from cattrs.preconf.json import JsonConverter, make_converter
 from yarl import URL
-
-from .config import ServerCRCONDetails
 
 
 def str_to_url(val: Any, _: Any) -> URL:
@@ -13,6 +10,7 @@ def str_to_url(val: Any, _: Any) -> URL:
 
 
 def make_rcon_converter() -> JsonConverter:
+    from types import NoneType
     rcon_converter = make_converter()
 
     @rcon_converter.register_structure_hook
@@ -28,11 +26,4 @@ def make_rcon_converter() -> JsonConverter:
 
 def make_config_converter() -> JsonConverter:
     config_converter = make_converter()
-
-    config_converter.register_structure_hook(URL, str_to_url)
-    server_crcon_details_hook = make_dict_structure_fn(
-        ServerCRCONDetails, converter=config_converter, websocket_url=override(omit=True)
-    )
-    config_converter.register_structure_hook(ServerCRCONDetails, server_crcon_details_hook)
-
     return config_converter

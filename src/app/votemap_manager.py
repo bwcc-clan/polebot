@@ -3,9 +3,10 @@ import contextlib
 import logging
 from collections.abc import Iterable
 from types import TracebackType
-from typing import Optional, Self
+from typing import Any, Optional, Self
 
-from cache import AsyncTTL
+import cachetools
+import cachetools.keys
 
 from .api_client import CRCONApiClient
 from .api_models import (
@@ -15,7 +16,9 @@ from .api_models import (
     ServerStatus,
     VoteMapUserConfig,
 )
+from .cache_utils import CacheItem, cache_item_ttu, ttl_cached
 from .config import ServerConfig
+from .map_selector import MapSelector
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +37,7 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
         self._api_client = api_client
         self._loop = loop
         self._exit_stack = contextlib.AsyncExitStack()
+        self._cache = cachetools.TLRUCache(maxsize=100, ttu=cache_item_ttu)
 
     async def __aenter__(self) -> Self:
         await self._exit_stack.__aenter__()
@@ -61,6 +65,9 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
             logger.info("Cancellation received, shutting down")
             raise
 
+    def get_cache(self, cache_hint: Optional[str] = None) -> cachetools.TLRUCache[Any, CacheItem[Any]]:
+        return self._cache
+
     async def _receive_and_process_message(self) -> None:
         log = await self._queue.get()
         try:
@@ -70,32 +77,67 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
                     await self._process_map_started()
                 case _:
                     logger.warning("Unsupported log message type: %s", log.log.action)
+        except Exception as ex:
+            logger.error("Error processing message", exc_info=ex)
         finally:
             self._queue.task_done()
 
     async def _process_map_started(self) -> None:
-        logger.debug("Processing map started")
+        logger.info("Processing map started")
+        selection = await self._generate_votemap_selection()
+        if len(selection):
+            await self._set_votemap_selection(selection)
+
+    async def _generate_votemap_selection(self) -> set[str]:
+        logger.debug("Generating a votemap selection")
         status = await self._get_server_status()
         layers = await self._get_server_maps()
         votemap_config = await self._get_votemap_config()
-        map_history = [status.map.id]
-        print(status)
-        print(layers)
-        print(votemap_config)
+        votemap_whitelist = await self._get_votemap_whitelist()
+        layers = [layer for layer in layers if layer.id in votemap_whitelist]
+        selector = MapSelector(status, layers, self._server_config, votemap_config, [])
+        selection = selector.get_warfare() | selector.get_offensive() | selector.get_skirmish()
+        logger.debug("Selection: [%s]", ",".join(selection))
+        return selection
 
+    async def _set_votemap_selection(self, selection: set[str]) -> None:
+        logger.info("Setting votemap selection to [%s]", ",".join(selection))
+        assert self._api_client
+        try:
+            saved_votemap_whitelist = await self._get_votemap_whitelist()
+            logger.info("Saved votemap whitelist = [%s]", ",".join(saved_votemap_whitelist))
+            logger.debug("Setting votemap whitelist = [%s]", ",".join(selection))
+            await self._api_client.set_votemap_whitelist(selection)
+            await asyncio.sleep(2)
+            logger.debug("Resetting votemap state")
+            await self._api_client.reset_votemap_state()
+            await asyncio.sleep(2)
+            logger.debug("Restoring votemap whitelist")
+            await self._api_client.set_votemap_whitelist(saved_votemap_whitelist)
+            logger.info("Votemap selection set")
 
-    @AsyncTTL(time_to_live=10)
+        except Exception as ex:
+            logger.error("Error setting votemap selection", exc_info=ex)
+
+    @ttl_cached(time_to_live=10)
     async def _get_server_status(self) -> ServerStatus:
         assert self._api_client
+        logger.debug("Getting server status")
         return await self._api_client.get_status()
 
-
-    @AsyncTTL(time_to_live=600)
+    @ttl_cached(time_to_live=60 * 60 * 8)
     async def _get_server_maps(self) -> Iterable[Layer]:
         assert self._api_client
+        logger.debug("Getting server maps")
         return await self._api_client.get_maps()
 
-    @AsyncTTL(time_to_live=600)
+    @ttl_cached(time_to_live=600)
     async def _get_votemap_config(self) -> VoteMapUserConfig:
         assert self._api_client
+        logger.debug("Getting votemap config")
         return await self._api_client.get_votemap_config()
+
+    async def _get_votemap_whitelist(self) -> Iterable[str]:
+        assert self._api_client
+        logger.debug("Getting votemap whitelist")
+        return await self._api_client.get_votemap_whitelist()

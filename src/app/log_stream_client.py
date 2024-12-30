@@ -143,7 +143,6 @@ class CRCONLogStreamClient:
 
     async def _handle_incoming_message(self, message: websockets.Data) -> None:
         try:
-            logger.debug("Message received: %s", str(message))
             obj = json.loads(message)
             response = self._converter.structure(obj, LogStreamResponse)
             if response:
@@ -164,6 +163,7 @@ class CRCONLogStreamClient:
                 "Error during handling of message",
                 exc_info=e,
             )
+            logger.info("Failed message: %s", str(message))
 
 
 def process_exception_fail_on_dns_error(exc: Exception) -> Exception | None:

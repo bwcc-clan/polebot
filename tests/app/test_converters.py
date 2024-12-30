@@ -220,11 +220,13 @@ def describe_structure():
             assert config.crcon_details is not None
             assert config.crcon_details.api_url == URL("https://hll.example.com")
             assert config.crcon_details.api_key == "magic_value"
+            assert config.crcon_details.websocket_url.scheme == "wss"
+            assert config.crcon_details.websocket_url.host == config.crcon_details.api_url.host
             assert config.weighting_config is not None
 
             assert len(config.weighting_config.groups) == 3
             assert "Boost" in config.weighting_config.groups
             boost1 = config.weighting_config.groups["Boost"]
             assert boost1.weight == 80
-            assert boost1.repeat_factor == 0.6
+            assert boost1.repeat_decay == 0.6
             assert len(config.weighting_config.environments) == 3

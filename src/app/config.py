@@ -1,28 +1,49 @@
 import json
 import logging
-import os
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import environ
 from attrs import field, frozen, validators
 from yarl import URL
 
-from app import converters
+from . import converters
+from .utils import expand_environment, str_to_url
 
 _logger = logging.getLogger(__name__)
+
+
+def _validate_api_url(_instance: Any, _attribute: Any, value: URL) -> None:
+    if value.scheme not in ["http", "https"]:
+        raise ValueError(f"Invalid scheme {value.scheme}")
+
+
+@frozen(auto_detect=True)
+class ServerCRCONDetails:
+    api_url: URL = field(converter=str_to_url, validator=_validate_api_url)
+    api_key: str = field(converter=expand_environment)
+    websocket_url: URL = field(init=False)
+    rcon_headers: Optional[dict[str, str]] = None
+
+    @websocket_url.default  # type: ignore[reportFunctionMemberAccess,unused-ignore]
+    def ann__attrs_post_init__(self) -> URL:
+        # The attrs docs on derived attributes https://www.attrs.org/en/stable/init.html#derived-attributes
+        # suggest to implement them as a decorator-based default
+        ws_scheme = "wss" if self.api_url.scheme == "https" else "ws"
+        return self.api_url.with_scheme(ws_scheme)
+
 
 @frozen(kw_only=True)
 class EnvironmentGroupConfig:
     weight: int = field(validator=[validators.ge(0), validators.le(100)])
-    repeat_factor: float = field(validator=[validators.ge(0.0), validators.le(1.0)])
+    repeat_decay: float = field(validator=[validators.ge(0.0), validators.le(1.0)])
     environments: list[str] = field(factory=list)
 
 
 @frozen(kw_only=True)
 class MapGroupConfig:
     weight: int = field(validator=[validators.ge(0), validators.le(100)])
-    repeat_factor: float = field(validator=[validators.ge(0.0), validators.le(1.0)])
+    repeat_decay: float = field(validator=[validators.ge(0.0), validators.le(1.0)])
     maps: list[str] = field(factory=list)
 
 
@@ -30,50 +51,6 @@ class MapGroupConfig:
 class WeightingConfig:
     groups: dict[str, MapGroupConfig]
     environments: dict[str, EnvironmentGroupConfig]
-@frozen(auto_detect=True)
-class ServerCRCONDetails:
-    api_url: URL
-    api_key: str
-    websocket_url: URL
-    rcon_headers: Optional[dict[str, str]] = None
-
-    def __init__(
-        self, api_url: URL, api_key: str, rcon_headers: Optional[dict[str, str]] = None
-    ) -> None:
-        if api_url.scheme not in ["http", "https"]:
-            raise ValueError(f"Invalid scheme {api_url.scheme}")
-
-        api_url = (
-            api_url.with_query(None)
-            .with_fragment(None)
-            .with_user(None)
-            .with_password(None)
-        )
-        ws_scheme = "wss" if api_url.scheme == "https" else "ws"
-        websocket_url = api_url.with_scheme(ws_scheme)
-
-        api_key = self._expand_environment(api_key)
-
-        self.__attrs_init__(api_url=api_url, api_key=api_key, websocket_url=websocket_url, rcon_headers=rcon_headers)  # type: ignore[attr-defined]
-
-    def _expand_environment(self, value: str) -> str:
-        """
-        If `value` starts with the `!!env:§` magic prefix, and the remainder of `value` refers to an environment
-        variable, returns an overridden `value`. Otherwise, returns the input value.
-
-        Args:
-            value (str): The value to expand.
-
-        Returns:
-            str: The expanded value, replaced with the value of an environment variable if so configured.
-        """
-        ENV_PREFIX = "!!env:"
-        if value.startswith(ENV_PREFIX):
-            env_var = value.removeprefix(ENV_PREFIX)
-            env_value = os.environ.get(env_var, None)
-            if env_value:
-                value = env_value
-        return value
 
 
 @frozen(kw_only=True)
@@ -85,7 +62,6 @@ class ServerConfig:
 
 @environ.config(prefix="APP")
 class AppConfig:
-
     config_dir: str = environ.var(".config")
 
 

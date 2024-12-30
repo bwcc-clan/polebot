@@ -23,6 +23,8 @@ pandas = "^2.2.3"
 environ-config = "^24.1.0"
 lagom = "^2.7.5"
 typeguard = "^4.4.1"
+cachetools = "^5.5.0"
+wrapt = "^1.17.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.7.3"
@@ -34,6 +36,8 @@ pytest-asyncio = "^0.24.0"
 pytest-describe = "^2.2.0"
 ipython = "^8.30.0"
 ipykernel = "^6.29.5"
+pandas-stubs = "^2.2.3.241126"
+types-cachetools = "^5.5.0.20240820"
 
 [build-system]
 requires = ["poetry-core"]
@@ -70,7 +74,7 @@ mypy_path = "$MYPY_CONFIG_FILE_DIR/stubs"
 [tool.ruff]
 exclude = ["scripts", "docs", "out", "play"]
 cache-dir = ".ruff_cache"
-line-length = 119
+line-length = 120
 indent-width = 4
 target-version = "py312"
 
