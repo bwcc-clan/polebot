@@ -61,7 +61,7 @@ def describe_when_entered():
             yield sut
 
     def describe_get_status():
-        DEFAULT_RESULT = {
+        DEFAULT_RESULT = {  # noqa: N806 - constant
             "result": {
                 "name": "My Server",
                 "map": {

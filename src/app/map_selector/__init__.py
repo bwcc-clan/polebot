@@ -1,3 +1,4 @@
+"""This module contains map selector code."""
 
 from .selector import MapSelector
 

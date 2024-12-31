@@ -1,3 +1,5 @@
+"""A client for the CRCON log stream."""
+
 import asyncio
 import contextlib
 import json
@@ -5,7 +7,7 @@ import logging
 import socket
 from collections.abc import Generator
 from types import TracebackType
-from typing import Optional, Self, Union
+from typing import Self
 
 import websockets
 import websockets.asyncio
@@ -25,17 +27,26 @@ logger = logging.getLogger(__name__)
 
 
 class CRCONLogStreamClient:
-    """
-    A client for the CRCON log stream. This client is used to connect to the CRCON log stream, which provides a stream
-    of log messages from the Hell Let Loose server. The client will connect to the CRCON server and read log messages,
-    then forward them onto a processing queue.
+    """A client for the CRCON log stream.
+
+    This client is used to connect to the CRCON log stream, which provides a stream of log messages from the Hell Let
+    Loose server. The client will connect to the CRCON server and read log messages, then forward them onto a processing
+    queue.
     """
     def __init__(
         self,
         server_config: ServerConfig,
         queue: asyncio.Queue[LogStreamObject],
-        log_types: Optional[list[LogMessageType]] = None,
-    ):
+        log_types: list[LogMessageType] | None = None,
+    ) -> None:
+        """Initialises the CRCON log stream client.
+
+        Args:
+            server_config (ServerConfig): The server configuration.
+            queue (asyncio.Queue[LogStreamObject]): The queue to which log messages should be forwarded.
+            log_types (list[LogMessageType] | None, optional): The allowable log message types. Defaults to None,
+            which indicates that all are allowed.
+        """
         self.server_config = server_config
         self._queue = queue
         self.log_types: list[LogMessageType] | None = log_types
@@ -47,6 +58,7 @@ class CRCONLogStreamClient:
         self._exit_stack = contextlib.AsyncExitStack()
 
     async def __aenter__(self) -> Self:
+        """Enters the context manager and connects to the CRCON server."""
         await self._exit_stack.__aenter__()
         return self
 
@@ -56,18 +68,19 @@ class CRCONLogStreamClient:
         exc_v: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> bool:
+        """Closes the connection to the CRCON server."""
         return await self._exit_stack.__aexit__(exc_t, exc_v, exc_tb)
 
     async def run(self) -> None:
-        """
-        Continually reads the log stream from a CRCON server. Will reconnect indefinitely unless a permanent exception
-        occurs. This should be called as an async task, which can be cancelled to terminate processing.
-        """
+        """Continually reads the log stream from a CRCON server.
 
+        Will reconnect indefinitely unless a permanent exception occurs. This should be called as an async task, which
+        can be cancelled to terminate processing.
+        """
         try:
             delays: Generator[float] | None = None
             async for websocket in self._connect():
-                logger.info(f"Connected to CRCON websocket {self.websocket_url}")
+                logger.info("Connected to CRCON websocket %s", self.websocket_url)
 
                 try:
                     await self._send_init_message(websocket)
@@ -83,9 +96,7 @@ class CRCONLogStreamClient:
                         case websockets.ConnectionClosedOK():
                             logger.info("Connection was closed normally")
                         case LogStreamMessageError():
-                            logger.warning(
-                                f"Remote server indicates error: {ex.message}"
-                            )
+                            logger.warning("Remote server indicates error: %s", ex.message)
 
                     # Retry the above exceptions with a backoff delay
                     if delays is None:
@@ -120,7 +131,7 @@ class CRCONLogStreamClient:
         else:
             process_exception = process_exception_standard_rules
 
-        logger.info(f"Connecting to {self.websocket_url}")
+        logger.info("Connecting to %s", self.websocket_url)
 
         ws = websockets.connect(
             uri=str(self.websocket_url),
@@ -131,13 +142,12 @@ class CRCONLogStreamClient:
         return ws
 
     async def _send_init_message(self, websocket: ClientConnection) -> None:
-        """
-        Sends the initialization message that starts the log stream.
+        """Sends the initialization message that starts the log stream.
 
         Args:
             websocket (ClientConnection): The websocket on which to send the message.
         """
-        body_obj: dict[str, Union[str, list[LogMessageType], list[str], None]] = {}
+        body_obj: dict[str, str | list[LogMessageType] | list[str] | None] = {}
         if self.last_seen_id:
             body_obj["last_seen_id"] = self.last_seen_id
         if self.log_types:
@@ -153,7 +163,7 @@ class CRCONLogStreamClient:
             response = self._converter.structure(obj, LogStreamResponse)
             if response:
                 if response.error:
-                    logger.debug(f"Response message error: {response.error}")
+                    logger.debug("Response message error: %s", response.error)
                     raise LogStreamMessageError(response.error)
 
                 self.last_seen_id = response.last_seen_id
@@ -164,7 +174,7 @@ class CRCONLogStreamClient:
 
         except LogStreamMessageError:
             raise
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             logger.error(
                 "Error during handling of message",
                 exc_info=e,
@@ -173,14 +183,15 @@ class CRCONLogStreamClient:
 
 
 def process_exception_fail_on_dns_error(exc: Exception) -> Exception | None:
-    """
-    Determine whether a connection error is retryable or fatal. This implementation differs from the websockets
-    default because it indicates not to retry on `socket.gaierror`, enabling us to fail if DNS lookup fails.
+    """Determine whether a connection error is retryable or fatal.
+
+    This implementation differs from the websockets default because it indicates not to retry on `socket.gaierror`,
+    enabling us to fail if DNS lookup fails.
     """
     if isinstance(exc, socket.gaierror):
         # DNS lookup failed - most likely because of misconfiguration
         return exc
-    if isinstance(exc, (EOFError, OSError, asyncio.TimeoutError)):
+    if isinstance(exc, EOFError | OSError | asyncio.TimeoutError):
         return None
     if isinstance(exc, websockets.InvalidStatus) and exc.response.status_code in [
         500,  # Internal Server Error

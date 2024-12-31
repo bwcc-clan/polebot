@@ -1,9 +1,0 @@
-
-from collections import OrderedDict
-from typing import Any
-
-class LRU(OrderedDict):
-    maxsize: int
-    def __init__(self, maxsize: int, *args: tuple[Any, ...], **kwargs: dict[str, Any]) -> None: ...
-    def __getitem__(self, key: str) -> Any: ...
-    def __setitem__(self, key: str, value: Any) -> None: ...

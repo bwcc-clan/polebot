@@ -4,9 +4,7 @@ version = "0.1.0"
 description = "Poley's Hell Let Loose bot for CRCON."
 authors = ["Rich Tebb <rich@tebb.io>"]
 readme = "README.md"
-packages = [
-    { include = "app", from = "src" },
-]
+packages = [{ include = "app", from = "src" }]
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -105,8 +103,58 @@ skip-magic-trailing-comma = false
 # Enable Pyflakes (`F`) and a subset of the pycodestyle (`E`)  codes by default.
 # Unlike Flake8, Ruff doesn't enable pycodestyle warnings (`W`) or
 # McCabe complexity (`C901`) by default.
-select = ["E", "W", "F", "T"]
-ignore = []
+select = [
+    # pycodestyle errors
+    "E",
+    # pycodestyle warnings
+    "W",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+    # pep8-naming
+    "N",
+    # flake8-comprehensions
+    "C4",
+    # pydocstyle
+    "D",
+    # flake8-2020
+    "YTT",
+    # flake8-annotations
+    "ANN",
+    # flake8-async
+    "ASYNC",
+    # flake8-bandit
+    "S",
+    # flake8-blind-except
+    "BLE",
+    # flake8-builtins
+    "A",
+    # flake8-commas
+    "COM",
+    # flake8-datetimez
+    "DTZ",
+    # flake8-import-conventions
+    "ICN",
+    # flake8-logging
+    "LOG",
+    # flake8-logging-format
+    "G",
+    # flake8-pie
+    "PIE",
+    # flake8-print
+    "T20",
+    # flake8-use-pathlib
+    "PTH",
+    ]
+ignore = ["ANN101", "ANN102"]   # This is the line that upsets the schema validation
+
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
@@ -115,8 +163,17 @@ unfixable = []
 # Allow unused variables when underscore-prefixed.
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
+
 [tool.ruff.lint.isort]
 known-local-folder = ["src"]
 
 [tool.ruff.lint.per-file-ignores]
 "*.ipynb" = ["E402"]
+"src/app/api_models.py" = [
+    "UP",
+    "D",
+] # this file is copied from hll_rcon_tool code so we don't want to modify it
+"tests/*" = ["D", "ANN", "S"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"

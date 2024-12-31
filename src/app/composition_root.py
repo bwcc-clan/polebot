@@ -1,7 +1,9 @@
+"""Composition root that configures dependency injection for the application."""
+
 import asyncio
 from collections.abc import Iterable
 from contextlib import AbstractContextManager
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 from lagom import (
     Container,
@@ -23,6 +25,15 @@ X = TypeVar("X")
 
 
 def define_context_dependency(ctr: Container, dep_type: type[X]) -> None:
+    """Defines a context dependency for a given container and provides a factory method.
+
+    Args:
+        ctr (Container): The container to define the dependency in.
+        dep_type (type[X]): The type of the dependency to define.
+
+    Yields:
+        X: The dependency instance.
+    """
     @context_dependency_definition(ctr)
     def _factory(c: Container) -> Iterable[dep_type]:  # type: ignore[valid-type]
         instance = c.resolve(dep_type, skip_definitions=True)
@@ -40,6 +51,15 @@ _container_initialized = False
 
 
 def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop) -> Container:
+    """Initialises the dependency injection container.
+
+    Args:
+        app_config (AppConfig): The application configuration.
+        loop (asyncio.AbstractEventLoop): The event loop.
+
+    Returns:
+        Container: The initialised container.
+    """
     global _container_initialized
 
     if _container_initialized:
@@ -67,8 +87,19 @@ _QUEUE_SIZE = 1000
 def begin_server_context(
     container: Container,
     server_config: ServerConfig,
-    stop_event: Optional[asyncio.Event] = None,
+    stop_event: asyncio.Event | None = None,
 ) -> ContextContainer:
+    """Begin the server context by creating a nested DI container context.
+
+    Args:
+        container (Container): The parent container.
+        server_config (ServerConfig): The server configuration for the server in this context.
+        stop_event (asyncio.Event | None, optional): If specified, an event that terminates the application. Defaults to
+        None.
+
+    Returns:
+        ContextContainer: _description_
+    """
     context_container = ContextContainer(
         container,
         context_types=[],
@@ -87,11 +118,11 @@ def begin_server_context(
     return context_container
 
 
-def create_server_manager(
-    container: Container,
-    server_config: ServerConfig,
-    stop_event: Optional[asyncio.Event] = None,
-) -> ServerManager:
-    factory = container.magic_partial(ServerManager)
-    server_manager = factory(server_config, stop_event=stop_event)
-    return server_manager
+# def create_server_manager(
+#     container: Container,
+#     server_config: ServerConfig,
+#     stop_event: asyncio.Event | None = None,
+# ) -> ServerManager:
+#     factory = container.magic_partial(ServerManager)
+#     server_manager = factory(server_config, stop_event=stop_event)
+#     return server_manager

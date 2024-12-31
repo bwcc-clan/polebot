@@ -1,8 +1,13 @@
+"""This module contains the ServerManager class.
+
+This class is responsible for managing the server lifecycle of a single CRCON server instance.
+"""
+
 import asyncio
 import contextlib
 import logging
 from types import TracebackType
-from typing import NoReturn, Optional, Self
+from typing import NoReturn, Self
 
 from .api_models import LogMessageType, LogStreamObject
 from .config import ServerConfig
@@ -17,14 +22,24 @@ _QUEUE_SIZE = 1000
 
 
 class ServerManager(contextlib.AbstractAsyncContextManager):
+    """The server manager is responsible for managing the server lifecycle of a single CRCON server instance."""
     def __init__(
         self,
         server_config: ServerConfig,
         loop: asyncio.AbstractEventLoop,
         log_stream_client: CRCONLogStreamClient,
         votemap_manager: VotemapManager,
-        stop_event: Optional[asyncio.Event] = None,
+        stop_event: asyncio.Event | None = None,
     ) -> None:
+        """Initialise the server manager.
+
+        Args:
+            server_config (ServerConfig): The server configuration.
+            loop (asyncio.AbstractEventLoop): The event loop to use for async operations.
+            log_stream_client (CRCONLogStreamClient): The log stream client to use for log message retrieval.
+            votemap_manager (VotemapManager): The votemap manager to use for votemap selection.
+            stop_event (asyncio.Event | None, optional): If specified, an event that will stop the instance when fired.
+        """
         self.server_config = server_config
         self._loop = loop
         self._stop_event = stop_event
@@ -36,6 +51,7 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
         self._exit_stack = contextlib.AsyncExitStack()
 
     async def __aenter__(self) -> Self:
+        """This method is a part of the context manager protocol. It is called when entering the context manager."""
         await self._exit_stack.__aenter__()
 
         await self._exit_stack.enter_async_context(self._votemap_manager)
@@ -46,11 +62,13 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
         return self
 
     async def __aexit__(
-        self, exc_t: type[BaseException] | None, exc_v: BaseException | None, exc_tb: TracebackType | None
+        self, exc_t: type[BaseException] | None, exc_v: BaseException | None, exc_tb: TracebackType | None,
     ) -> bool:
+        """This method is a part of the context manager protocol. It is called when exiting the context manager."""
         return await self._exit_stack.__aexit__(exc_t, exc_v, exc_tb)
 
     async def run(self) -> None:
+        """Run the server manager."""
         if not self._votemap_manager or not self._log_stream_client:
             raise RuntimeError("ServerManager context must be entered")
 
@@ -70,9 +88,10 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
         for task in tasks:
             logger.debug("Task %s: cancelled=%s", task.get_name(), task.cancelled())
             if not task.cancelled() and task.exception():
-                logger.exception(f"Task {task.get_name()} failed", exc_info=task.exception())
+                logger.exception("Task %s failed", task.get_name(), exc_info=task.exception())
 
     def stop(self) -> None:
+        """Stop the server manager."""
         self._stop_internal(True)
 
     def _stop_internal(self, stop_monitor: bool) -> None:
@@ -81,7 +100,7 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
             self._task_group.create_task(self._force_terminate_task_group())
 
     async def _monitor_stop_event(self) -> None:
-        assert self._stop_event
+        assert self._stop_event  # noqa: S101
         try:
             await self._stop_event.wait()
             logger.info("Stop event signalled, stopping")

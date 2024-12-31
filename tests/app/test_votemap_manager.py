@@ -88,7 +88,7 @@ def standard_api_client(
 def describe_process_map_started():
     @pytest.mark.asyncio
     async def process_map_started_updates_server(
-        standard_server_config: ServerConfig, standard_status: ServerStatus, standard_layers: list[Layer]
+        standard_server_config: ServerConfig, standard_status: ServerStatus, standard_layers: list[Layer],
     ):
         # *** ARRANGE ***
         event_loop = asyncio.get_event_loop()
@@ -116,7 +116,7 @@ def describe_process_map_started():
 def describe_process_map_ended():
     @pytest.mark.asyncio
     async def process_map_ended_saves_history(
-        standard_server_config: ServerConfig, standard_status: ServerStatus, standard_layers: list[Layer]
+        standard_server_config: ServerConfig, standard_status: ServerStatus, standard_layers: list[Layer],
     ):
         # *** ARRANGE ***
         event_loop = asyncio.get_event_loop()

@@ -86,7 +86,9 @@ def describe_get_warfare():
 
     def describe_happy_path():
         def selects_configured_number_of_warfare(
-            standard_server_config: ServerConfig, standard_status: ServerStatus, standard_layers_by_id: dict[str, Layer]
+            standard_server_config: ServerConfig,
+            standard_status: ServerStatus,
+            standard_layers_by_id: dict[str, Layer],
         ):
             # *** ARRANGE ***
             vmuc = VoteMapUserConfig(num_warfare_options=6)
@@ -99,7 +101,9 @@ def describe_get_warfare():
             assert len(list(result)) == 6
 
         def selects_configured_number_of_offensive(
-            standard_server_config: ServerConfig, standard_status: ServerStatus, standard_layers_by_id: dict[str, Layer]
+            standard_server_config: ServerConfig,
+            standard_status: ServerStatus,
+            standard_layers_by_id: dict[str, Layer],
         ):
             # *** ARRANGE ***
             vmuc = VoteMapUserConfig(num_offensive_options=6)
@@ -112,7 +116,9 @@ def describe_get_warfare():
             assert len(list(result)) == 6
 
         def selects_configured_number_of_skirmish(
-            standard_server_config: ServerConfig, standard_status: ServerStatus, standard_layers_by_id: dict[str, Layer]
+            standard_server_config: ServerConfig,
+            standard_status: ServerStatus,
+            standard_layers_by_id: dict[str, Layer],
         ):
             # *** ARRANGE ***
             vmuc = VoteMapUserConfig(num_skirmish_control_options=6)
@@ -126,12 +132,15 @@ def describe_get_warfare():
 
     def describe_with_map_history_as_deque():
         def selects_configured_number_of_warfare(
-            standard_server_config: ServerConfig, standard_status: ServerStatus, standard_layers_by_id: dict[str, Layer]
+            standard_server_config: ServerConfig,
+            standard_status: ServerStatus,
+            standard_layers_by_id: dict[str, Layer],
         ):
             # *** ARRANGE ***
             vmuc = VoteMapUserConfig(num_warfare_options=6, number_last_played_to_exclude=1)
             recent_layer_history = deque(
-                ["carentan_warfare_night", "omahabeach_warfare_day", "stmariedumont_warfare_day"], maxlen=3
+                ["carentan_warfare_night", "omahabeach_warfare_day", "stmariedumont_warfare_day"],
+                maxlen=3,
             )
             sut = MapSelector(
                 standard_status,
@@ -156,7 +165,10 @@ def describe_get_warfare():
             standard_votemap_config: VoteMapUserConfig,
         ):
             return _generate_some_results(
-                standard_server_config, standard_status, standard_layers_by_id, standard_votemap_config
+                standard_server_config,
+                standard_status,
+                standard_layers_by_id,
+                standard_votemap_config,
             )
 
         @pytest.fixture
@@ -207,7 +219,10 @@ def describe_get_warfare():
                 allow_consecutive_offensives=False,
             )
             results = _generate_some_results(
-                standard_server_config, status_current_layer_offensive_us, standard_layers_by_id, votemap_config
+                standard_server_config,
+                status_current_layer_offensive_us,
+                standard_layers_by_id,
+                votemap_config,
             )
             for result_set in results:
                 layers = [standard_layers_by_id[layer] for layer in result_set]
@@ -222,6 +237,6 @@ def _generate_some_results(
 ) -> list[list[str]]:
     sut = MapSelector(server_status, list(layers_by_id.values()), server_config, votemap_config, [])
     result_sets: list[list[str]] = []
-    for i in range(50):
+    for _i in range(50):
         result_sets.append(list(sut.get_selection()))
     return result_sets

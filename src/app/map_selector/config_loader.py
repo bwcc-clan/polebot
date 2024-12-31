@@ -1,3 +1,5 @@
+"""This module contains functions that load the server configuration and layers into dataframes."""
+
 import pandas as pd
 from attrs import define
 
@@ -8,13 +10,13 @@ from ..config import ServerConfig
 
 @define(kw_only=True)
 class ConfigData:
+    """Dataframes that represent the server configuration."""
     df_map_groups: pd.DataFrame
     df_environments: pd.DataFrame
 
 
 def get_config_dataframes(server_config: ServerConfig) -> ConfigData:
-    """
-    Gets an object that contains dataframes that represent the server configuration.
+    """Gets an object that contains dataframes that represent the server configuration.
 
     Args:
         server_config (ServerConfig): The server configuration to read from.
@@ -22,7 +24,6 @@ def get_config_dataframes(server_config: ServerConfig) -> ConfigData:
     Returns:
         ConfigData: An object that contains the config dataframes.
     """
-
     json_converter = converters.make_config_converter()
     config = json_converter.unstructure(server_config)
 
@@ -38,7 +39,7 @@ def get_config_dataframes(server_config: ServerConfig) -> ConfigData:
                 "weight": "map_weight",
                 "group": "map_group",
                 "repeat_decay": "map_repeat_decay",
-            }
+            },
         )
         .set_index("map")
     )
@@ -55,7 +56,7 @@ def get_config_dataframes(server_config: ServerConfig) -> ConfigData:
                 "environments": "environment",
                 "weight": "environment_weight",
                 "repeat_decay": "environment_repeat_decay",
-            }
+            },
         )
         .set_index("environment")
     )
@@ -65,12 +66,21 @@ def get_config_dataframes(server_config: ServerConfig) -> ConfigData:
 
 @define(kw_only=True)
 class LayerData:
+    """Dataframes that represent the layers for different game modes in the server configuration."""
     df_warfare: pd.DataFrame
     df_offensive: pd.DataFrame
     df_skirmish: pd.DataFrame
 
 
 def get_layer_dataframes(layers: list[Layer]) -> LayerData:
+    """Gets dataframes that represent the layers for different game modes in the server configuration.
+
+    Args:
+        layers (list[Layer]): A list of all layers that the server supports.
+
+    Returns:
+        LayerData: An object containing dataframes that represent the layers for different game modes.
+    """
     json_converter = converters.make_rcon_converter()
     l2 = json_converter.unstructure(layers)
 

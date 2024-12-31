@@ -1,3 +1,5 @@
+"""A module for selecting maps to be included in the votemap choices."""
+
 import logging
 from collections.abc import Iterable, Sequence
 from itertools import chain
@@ -16,11 +18,12 @@ _SKIRMISH_MODES = {GameMode.CONTROL, GameMode.MAJORITY, GameMode.PHASED}
 
 
 class MapSelector:
-    """
-    A class for selecting maps to be included in the votemap choices. This class is responsible for selecting maps based
-    on the current server status, the server configuration, and the votemap configuration. It uses a weighted selection
-    algorithm iteratively to select a map based on various factors including the configured map weighting, the number of
-    times that or similar maps have already been selected, the environment they are in, and the game mode they support.
+    """A class for selecting maps to be included in the votemap choices.
+
+    This class is responsible for selecting maps based on the current server status, the server configuration, and the
+    votemap configuration. It uses a weighted selection algorithm iteratively to select a map based on various factors
+    including the configured map weighting, the number of times that or similar maps have already been selected, the
+    environment they are in, and the game mode they support.
     """
 
     def __init__(
@@ -32,8 +35,7 @@ class MapSelector:
         recent_layer_history: Sequence[str],
         logger: logging.Logger = _logger,
     ) -> None:
-        """
-        Initialises a map selector instance with current state.
+        """Initialises a map selector instance with current state.
 
         Args:
             server_status (ServerStatus): The current server status.
@@ -44,7 +46,6 @@ class MapSelector:
             most-recently-played last.
             logger (logging.Logger): The logger.
         """
-
         self._server_status = server_status
         self._layers = layers
         self._recent_layer_history = list(recent_layer_history)
@@ -64,6 +65,7 @@ class MapSelector:
 
 
     def get_selection(self) -> Iterable[str]:
+        """Selects maps to be included in the votemap choices."""
         warfare = self._get_warfare()
         offensive = self._get_offensive()
         skirmish = self._get_skirmish()
@@ -98,7 +100,7 @@ class MapSelector:
     def _select_layers(self, df: pd.DataFrame, count: int) -> set[str]:
         selected_layers: set[str] = set()
 
-        for i in range(count):
+        for _i in range(count):
             # (Re)calculate overall weightings. The factors won't have changed (these come from configuration) but the
             # scores are changed in response to the map that has been selected.
             df["overall_weighting"] = (
@@ -143,7 +145,7 @@ class MapSelector:
         # Always exclude the current layer (map) from selection. Also remove previous n layers from history if
         # configured
         standard_exclusions = {self._current_layer.id} | set(
-            self._recent_layer_history[: self._votemap_config.number_last_played_to_exclude]
+            self._recent_layer_history[: self._votemap_config.number_last_played_to_exclude],
         )
         df = df[~df["id"].isin(standard_exclusions)]
 

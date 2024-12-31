@@ -1,28 +1,36 @@
+
+"""This module contains the logging configuration for the application."""
+
 import atexit
 import logging
 import logging.config
-import os
+from pathlib import Path
 from queue import Queue
 
 
 class OneLineExceptionFormatter(logging.Formatter):
-    def formatException(self, exc_info) -> str:  # type: ignore[no-untyped-def]
+    """A custom formatter that formats exceptions into one line."""
+    def formatException(self, exc_info) -> str:  # type: ignore[no-untyped-def]  # noqa: N802 , D102 , ANN001 (overriden method)
         result = super().formatException(exc_info)
         return repr(result)  # or format into one line however you want to
 
-    def format(self, record: logging.LogRecord) -> str:
+    def format(self, record: logging.LogRecord) -> str:  # noqa: D102 (overriden method)
         s = super().format(record)
-        if record.exc_text:
-            s = s.replace("\n", "") + "|"
-        else:
-            s = s.replace("\n", "\\n")
+        s = s.replace("\n", "") + "|" if record.exc_text else s.replace("\n", "\\n")
         return s
 
 
 def configure_logger(log_path: str, log_level: str = "INFO") -> None:
+    """Configures the logger for the application.
+
+    Args:
+        log_path (str): The path to where to store the log files.
+        log_level (str, optional): The console log level. Defaults to "INFO".
+    """
     buffer_queue = Queue()  # type: ignore
-    os.makedirs(log_path, exist_ok=True)
-    logfile = os.path.join(log_path, "polebot.log")
+    log_path_l = Path(log_path)
+    log_path_l.mkdir(parents=True, exist_ok=True)
+    logfile = log_path_l / "polebot.log"
     logging.config.dictConfig(
         {
             "version": 1,
@@ -31,7 +39,7 @@ def configure_logger(log_path: str, log_level: str = "INFO") -> None:
                     "()": "app.logging_utils.OneLineExceptionFormatter",
                     "format": "%(asctime)s (%(name)s) [%(levelname)s] %(message)s",
                     "datefmt": "%Y-%m-%dT%H:%M:%S",
-                }
+                },
             },
             "handlers": {
                 "console": {
@@ -62,7 +70,7 @@ def configure_logger(log_path: str, log_level: str = "INFO") -> None:
                 "urllib3.connectionpool": {"level": "INFO"},
             },
             "disable_existing_loggers": False,
-        }
+        },
     )
     qh = logging.getHandlerByName("queue_handler")
     qh.listener.start()  # type: ignore

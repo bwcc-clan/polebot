@@ -1,12 +1,15 @@
-# Performs retrying on requests to the CRCON API.
-# Based on https://github.com/inyutin/aiohttp_retry
+"""Performs retrying on requests to the CRCON API.
+
+Based on https://github.com/inyutin/aiohttp_retry but with customizations.
+"""
+
 import abc
 import asyncio
 import logging
 import random
 from collections.abc import Generator, Iterable
 from types import TracebackType
-from typing import Any, Optional
+from typing import Any
 
 import aiohttp
 import aiohttp.typedefs
@@ -17,18 +20,25 @@ _MIN_SERVER_ERROR_STATUS = 500
 
 
 class RetryOptionsBase(abc.ABC):
-    """
-    Base class for request retry options.
-    """
+    """Base class for request retry options."""
 
     def __init__(
         self,
-        attempts: int = 3,  # How many times we should retry
-        statuses: Iterable[int] | None = None,  # On which statuses we should retry
-        exceptions: Iterable[type[Exception]] | None = None,  # On which exceptions we should retry, by default on all
-        methods: Iterable[str] | None = None,  # On which HTTP methods we should retry
-        retry_all_server_errors: bool = True,  # If should retry all 500 errors or not
+        attempts: int = 3,
+        statuses: Iterable[int] | None = None,
+        exceptions: Iterable[type[Exception]] | None = None,
+        methods: Iterable[str] | None = None,
+        retry_all_server_errors: bool = True,
     ) -> None:
+        """Initializes the retry options.
+
+        Args:
+            attempts (int, optional): How many times should we retry. Defaults to 3.
+            statuses (set[int], optional): On which statuses we should retry
+            exceptions (set[type[Exception]], optional): On which exception types we should retry
+            methods (set[str], optional):  On which HTTP methods we should retry
+            retry_all_server_errors (bool, optional): If should retry all 500 errors or not
+        """
         self.attempts: int = attempts
         if statuses is None:
             statuses = set()
@@ -46,28 +56,37 @@ class RetryOptionsBase(abc.ABC):
 
     @abc.abstractmethod
     def get_timeout(self, attempt: int, response: aiohttp.ClientResponse | None = None) -> float:
-        """
-        Gets the timeout (in seconds) for the retry attempt iteration.
-        """
+        """Gets the timeout (in seconds) for the retry attempt iteration."""
         raise NotImplementedError
 
 
 class ExponentialRetry(RetryOptionsBase):
-    """
-    A retry option with exponential backoff.
-    """
+    """A retry option with exponential backoff."""
 
     def __init__(
         self,
-        attempts: int = 3,  # How many times we should retry
-        start_timeout: float = 0.1,  # Base timeout time, then it exponentially grow
-        max_timeout: float = 30.0,  # Max possible timeout between tries
-        factor: float = 2.0,  # How much we increase timeout each time
-        statuses: set[int] | None = None,  # On which statuses we should retry
-        exceptions: set[type[Exception]] | None = None,  # On which exceptions we should retry
-        methods: set[str] | None = None,  # On which HTTP methods we should retry
+        attempts: int = 3,
+        start_timeout: float = 0.1,
+        max_timeout: float = 30.0,
+        factor: float = 2.0,
+        statuses: set[int] | None = None,
+        exceptions: set[type[Exception]] | None = None,
+        methods: set[str] | None = None,
         retry_all_server_errors: bool = True,
     ) -> None:
+        """Initializes the retry options.
+
+        Args:
+            attempts (int, optional): How many times should we retry. Defaults to 3.
+            start_timeout (float, optional): Base timeout in seconds, then it exponentially grow. Defaults to 0.1.
+            max_timeout (float, optional): Max possible timeout between tries. Defaults to 30.0.
+            factor (float, optional): How much we increase timeout each time
+            statuses (set[int], optional): On which statuses we should retry
+            exceptions (set[type[Exception]], optional): On which exception types we should retry
+            methods (set[str], optional):  On which HTTP methods we should retry
+            random_interval_size (float, optional): Size of interval for random component
+            retry_all_server_errors (bool, optional): If should retry all 500 errors or not
+        """
         super().__init__(
             attempts=attempts,
             statuses=statuses,
@@ -85,27 +104,39 @@ class ExponentialRetry(RetryOptionsBase):
         attempt: int,
         response: aiohttp.ClientResponse | None = None,  # noqa: ARG002
     ) -> float:
+        """Gets the timeout (in seconds) for the retry attempt iteration."""
         timeout = self._start_timeout * (self._factor**attempt)
         return min(timeout, self._max_timeout)
 
 
 class JitterRetry(ExponentialRetry):
-    """
-    A retry option with exponential backoff and jitter.
-    """
+    """A retry option with exponential backoff and jitter."""
 
     def __init__(
         self,
-        attempts: int = 3,  # How many times we should retry
-        start_timeout: float = 0.1,  # Base timeout time, then it exponentially grow
-        max_timeout: float = 30.0,  # Max possible timeout between tries
-        factor: float = 2.0,  # How much we increase timeout each time
-        statuses: set[int] | None = None,  # On which statuses we should retry
-        exceptions: set[type[Exception]] | None = None,  # On which exceptions we should retry
-        methods: set[str] | None = None,  # On which HTTP methods we should retry
-        random_interval_size: float = 2.0,  # size of interval for random component
+        attempts: int = 3,
+        start_timeout: float = 0.1,
+        max_timeout: float = 30.0,
+        factor: float = 2.0,
+        statuses: set[int] | None = None,
+        exceptions: set[type[Exception]] | None = None,
+        methods: set[str] | None = None,
+        random_interval_size: float = 2.0,
         retry_all_server_errors: bool = True,
     ) -> None:
+        """Initializes the retry options.
+
+        Args:
+            attempts (int, optional): How many times should we retry. Defaults to 3.
+            start_timeout (float, optional): Base timeout in seconds, then it exponentially grow. Defaults to 0.1.
+            max_timeout (float, optional): Max possible timeout between tries. Defaults to 30.0.
+            factor (float, optional): How much we increase timeout each time
+            statuses (set[int], optional): On which statuses we should retry
+            exceptions (set[type[Exception]], optional): On which exception types we should retry
+            methods (set[str], optional):  On which HTTP methods we should retry
+            random_interval_size (float, optional): Size of interval for random component
+            retry_all_server_errors (bool, optional): If should retry all 500 errors or not
+        """
         super().__init__(
             attempts=attempts,
             start_timeout=start_timeout,
@@ -127,15 +158,14 @@ class JitterRetry(ExponentialRetry):
         attempt: int,
         response: aiohttp.ClientResponse | None = None,  # noqa: ARG002
     ) -> float:
-        timeout: float = super().get_timeout(attempt) + random.uniform(0, self._random_interval_size) ** self._factor
+        """Gets the timeout (in seconds) for the retry attempt iteration."""
+        timeout: float = super().get_timeout(attempt) + random.uniform(0, self._random_interval_size) ** self._factor  # noqa: S311
         return timeout
 
 
 @frozen(kw_only=True)
 class ApiRequestParams:
-    """
-    Contains parameters for an API request with retries.
-    """
+    """Contains parameters for an API request with retries."""
     method: str
     url: URL
     headers: dict[str, Any] | None = None
@@ -143,18 +173,26 @@ class ApiRequestParams:
 
 
 class ApiRequestContext:
-    """
-    Context manager for making API requests with retries.
-    """
+    """Context manager for making API requests with retries."""
 
     def __init__(
         self,
         session: aiohttp.ClientSession,
         params: ApiRequestParams,
-        retry_options: Optional[RetryOptionsBase] = None,
-        logger: Optional[logging.Logger] = None,
+        retry_options: RetryOptionsBase | None = None,
+        logger: logging.Logger | None = None,
         raise_for_status: bool = False,
     ) -> None:
+        """Initializes the context manager.
+
+        Args:
+            session (aiohttp.ClientSession): The session to use for the request.
+            params (ApiRequestParams): The parameters for the request.
+            retry_options (RetryOptionsBase | None, optional): The retry options. Defaults to None.
+            logger (logging.Logger | None, optional): The logger to use. Defaults to None.
+            raise_for_status (bool, optional): Whether to raise an exception for a failure HTTP status response code.
+            Defaults to False.
+        """
         self._session = session
         self._params = params
         self._retry_options = retry_options or JitterRetry()
@@ -172,16 +210,13 @@ class ApiRequestContext:
         if response.status >= _MIN_SERVER_ERROR_STATUS and self._retry_options.retry_all_server_errors:
             return False
 
-        if response.status in self._retry_options.statuses:
-            return False
-
-        return True
+        return response.status not in self._retry_options.statuses
 
     async def _do_request(self) -> aiohttp.ClientResponse:
         current_attempt = 0
 
         while True:
-            self._logger.debug(f"Attempt {current_attempt+1} out of {self._retry_options.attempts}")
+            self._logger.debug("Attempt %d out of %d", current_attempt+1, self._retry_options.attempts)
 
             current_attempt += 1
             try:
@@ -216,9 +251,11 @@ class ApiRequestContext:
             await asyncio.sleep(retry_wait)
 
     def __await__(self) -> Generator[Any, None, aiohttp.ClientResponse]:
+        """Part of the awaitable protocol."""
         return self.__aenter__().__await__()
 
     async def __aenter__(self) -> aiohttp.ClientResponse:
+        """Part of the context manager protocol."""
         return await self._do_request()
 
     async def __aexit__(
@@ -227,5 +264,6 @@ class ApiRequestContext:
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
+        """Part of the context manager protocol."""
         if self._response is not None and not self._response.closed:
             self._response.close()

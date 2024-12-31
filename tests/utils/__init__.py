@@ -1,14 +1,13 @@
 
 from pathlib import Path
-from typing import TypeAlias
 from unittest.mock import AsyncMock
 
-JSON: TypeAlias = dict[str, "JSON"] | list["JSON"] | str | int | float | bool | None
+type JSON = dict[str, "JSON"] | list["JSON"] | str | int | float | bool | None
 
 def support_files_dir(file: str) -> Path:
     f = Path(file)
-    dir = f.parent.resolve().joinpath(f.stem)
-    return dir
+    path = f.parent.resolve().joinpath(f.stem)
+    return path
 
 def create_mock_json_response(expected_response: JSON) -> AsyncMock:
     mock_response = AsyncMock()

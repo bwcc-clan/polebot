@@ -1,11 +1,12 @@
+"""This module contains the votemap manager class."""
+
 import asyncio
 import contextlib
 import logging
 from collections import deque
 from collections.abc import Iterable
-from itertools import chain
 from types import TracebackType
-from typing import Any, Optional, Self
+from typing import Any, Self
 
 import cachetools
 import cachetools.keys
@@ -26,6 +27,8 @@ logger = logging.getLogger(__name__)
 
 
 class VotemapManager(contextlib.AbstractAsyncContextManager):
+    """The votemap manager is responsible for managing the votemap selection on the server."""
+
     def __init__(
         self,
         server_config: ServerConfig,
@@ -33,8 +36,16 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
         api_client: CRCONApiClient,
         loop: asyncio.AbstractEventLoop,
     ) -> None:
+        """Initialise the votemap manager.
+
+        Args:
+            server_config (ServerConfig): The server configuration.
+            queue (asyncio.Queue[LogStreamObject]): The queue to receive log messages from.
+            api_client (CRCONApiClient): The API client to use for CRCON server communication.
+            loop (asyncio.AbstractEventLoop): The event loop to use for async operations.
+        """
         self._server_config = server_config
-        self._votemap_config: Optional[VoteMapUserConfig] = None
+        self._votemap_config: VoteMapUserConfig | None = None
         self._queue = queue
         self._api_client = api_client
         self._loop = loop
@@ -43,18 +54,21 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
         self._layer_history: deque[str] = deque(maxlen=10)
 
     async def __aenter__(self) -> Self:
+        """This method is a part of the context manager protocol. It is called when entering the context manager."""
         await self._exit_stack.__aenter__()
         await self._exit_stack.enter_async_context(self._api_client)
         return self
 
     async def __aexit__(
-        self, exc_t: type[BaseException] | None, exc_v: BaseException | None, exc_tb: TracebackType | None
+        self, exc_t: type[BaseException] | None, exc_v: BaseException | None, exc_tb: TracebackType | None,
     ) -> bool:
+        """This method is a part of the context manager protocol. It is called when exiting the context manager."""
         return await self._exit_stack.__aexit__(exc_t, exc_v, exc_tb)
 
     async def run(self) -> None:
-        """
-        Runs the votemap manager. Will continue indefinitely unless a fatal exception occurs. This should be called as
+        """Run the votemap manager.
+
+        Will continue indefinitely unless a fatal exception occurs. This should be called as
         an async task, which can be cancelled to terminate processing.
         """
         if self._api_client is None:
@@ -68,20 +82,21 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
             logger.info("Cancellation received, shutting down")
             raise
 
-    def get_cache(self, cache_hint: Optional[str] = None) -> cachetools.TLRUCache[Any, CacheItem[Any]]:
+    def get_cache(self, cache_hint: str | None = None) -> cachetools.TLRUCache[Any, CacheItem[Any]]:
+        """Get the cache for this instance."""
         return self._cache
 
     async def _receive_and_process_message(self) -> None:
-        """
-        This is the main message processing loop. It will block until a message is received from the queue, then process
-        it. It swallows all Exceptions (therefore not system exceptions).
+        """This is the main message processing loop.
+
+        It will block until a message is received from the queue, then process it. It swallows all Exceptions (therefore
+        not system exceptions).
 
         Note that the message types are filtered in the log stream client, so we only expect to receive messages that
         pass the filter. If you add new message types to the filter, you will need to update this method to handle them,
         and vice-versa. Likewise if you remove message types. Keep them in sync. The filter is configured in the server
         manager class.
         """
-
         log = await self._queue.get()
         try:
             logger.debug("Message received of type %s", log.log.action)
@@ -92,7 +107,7 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
                     await self._process_map_ended()
                 case _:
                     logger.warning("Unsupported log message type: %s", log.log.action)
-        except Exception as ex:
+        except Exception as ex:  # noqa: BLE001
             logger.error("Error processing message", exc_info=ex)
         finally:
             self._queue.task_done()
@@ -132,7 +147,7 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
 
     async def _set_votemap_selection(self, selection: Iterable[str]) -> None:
         logger.info("Setting votemap selection to [%s]", ",".join(selection))
-        assert self._api_client
+        assert self._api_client  # noqa: S101
 
         saved_votemap_whitelist = await self._get_votemap_whitelist()
         logger.info("Saved votemap whitelist = [%s]", ",".join(saved_votemap_whitelist))
@@ -145,7 +160,7 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
             await self._api_client.reset_votemap_state()
             logger.info("Votemap selection set")
 
-        except Exception as ex:
+        except Exception as ex:  # noqa: BLE001
             logger.error("Error setting votemap selection", exc_info=ex)
 
         finally:
@@ -155,23 +170,23 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
 
     @ttl_cached(time_to_live=10)
     async def _get_server_status(self) -> ServerStatus:
-        assert self._api_client
+        assert self._api_client  # noqa: S101
         logger.debug("Getting server status")
         return await self._api_client.get_status()
 
     @ttl_cached(time_to_live=60 * 60 * 8)
     async def _get_server_maps(self) -> Iterable[Layer]:
-        assert self._api_client
+        assert self._api_client  # noqa: S101
         logger.debug("Getting server maps")
         return await self._api_client.get_maps()
 
     @ttl_cached(time_to_live=600)
     async def _get_votemap_config(self) -> VoteMapUserConfig:
-        assert self._api_client
+        assert self._api_client  # noqa: S101
         logger.debug("Getting votemap config")
         return await self._api_client.get_votemap_config()
 
     async def _get_votemap_whitelist(self) -> Iterable[str]:
-        assert self._api_client
+        assert self._api_client  # noqa: S101
         logger.debug("Getting votemap whitelist")
         return await self._api_client.get_votemap_whitelist()

@@ -1,3 +1,5 @@
+"""The main entry point for the application."""
+
 import asyncio
 import logging
 import os
@@ -31,6 +33,7 @@ _stop_event = asyncio.Event()
 
 
 def shutdown(sig: signal.Signals) -> None:
+    """Signal handler for SIGINT and SIGTERM that initiates application shutdown."""
     global _loop
     if _loop:
         logger.info("Received %s, signalling shutdown", sig.name)
@@ -40,25 +43,25 @@ def shutdown(sig: signal.Signals) -> None:
 
 
 async def run_server_manager(
-    server_config: ServerConfig, container: Container
+    server_config: ServerConfig, container: Container,
 ) -> None:
-    """
-    Creates a DI context for a server configuration, then instantiates and runs the server manager from within that
-    context.
+    """Runs the server manager for the specified server configuration.
+
+    Creates a DI context for the server, then instantiates and runs the server manager from within that context.
 
     Args:
         server_config (ServerConfig): The server configuration.
         container (Container): The root DI container.
     """
-
     with begin_server_context(
-        container, server_config, _stop_event
+        container, server_config, _stop_event,
     ) as context_container:
         server_manager = context_container[ServerManager]
         async with server_manager:
             await server_manager.run()
 
 async def async_main(loop: asyncio.AbstractEventLoop) -> None:
+    """The main async entry point for the application."""
     load_dotenv()
     cfg = environ.to_config(AppConfig)
     container = init_container(app_config=cfg, loop=loop)
@@ -66,11 +69,12 @@ async def async_main(loop: asyncio.AbstractEventLoop) -> None:
     async with asyncio.TaskGroup() as tg:
         server_config = get_server_config(cfg)
         tg.create_task(
-            run_server_manager(server_config, container), name="server-manager"
+            run_server_manager(server_config, container), name="server-manager",
         )
 
 
 def main() -> None:
+    """The main entry point for the application."""
     global _loop
     asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     _loop = asyncio.new_event_loop()
@@ -80,7 +84,7 @@ def main() -> None:
 
     try:
         _loop.run_until_complete(async_main(_loop))
-    except Exception as ex:
+    except Exception as ex:  # noqa: BLE001
         logger.fatal(f"Unhandled exception {ex}", exc_info=ex)
 
 
