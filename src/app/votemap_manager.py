@@ -102,10 +102,11 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
         selection = list(await self._generate_votemap_selection())
         if len(selection):
             await self._set_votemap_selection(selection)
+        else:
+            logger.debug("No selection generated, skipping")
 
     async def _process_map_ended(self) -> None:
         logger.info("Processing map ended")
-
         status = await self._get_server_status()
         logger.debug("Saving current map [%s] to layer history", status.map.id)
         current_map = status.map.id
@@ -125,28 +126,32 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
             votemap_config=votemap_config,
             recent_layer_history=self._layer_history,
         )
-        selection = chain(selector._get_warfare(), selector._get_offensive(), selector._get_skirmish())
+        selection = list(selector.get_selection())
         logger.debug("Selection: [%s]", ",".join(selection))
         return selection
 
     async def _set_votemap_selection(self, selection: Iterable[str]) -> None:
         logger.info("Setting votemap selection to [%s]", ",".join(selection))
         assert self._api_client
+
+        saved_votemap_whitelist = await self._get_votemap_whitelist()
+        logger.info("Saved votemap whitelist = [%s]", ",".join(saved_votemap_whitelist))
+
         try:
-            saved_votemap_whitelist = await self._get_votemap_whitelist()
-            logger.info("Saved votemap whitelist = [%s]", ",".join(saved_votemap_whitelist))
             logger.debug("Setting votemap whitelist = [%s]", ",".join(selection))
             await self._api_client.set_votemap_whitelist(selection)
             await asyncio.sleep(2)
             logger.debug("Resetting votemap state")
             await self._api_client.reset_votemap_state()
-            await asyncio.sleep(2)
-            logger.debug("Restoring votemap whitelist")
-            await self._api_client.set_votemap_whitelist(saved_votemap_whitelist)
             logger.info("Votemap selection set")
 
         except Exception as ex:
             logger.error("Error setting votemap selection", exc_info=ex)
+
+        finally:
+            await asyncio.sleep(2)
+            logger.debug("Restoring votemap whitelist")
+            await self._api_client.set_votemap_whitelist(saved_votemap_whitelist)
 
     @ttl_cached(time_to_live=10)
     async def _get_server_status(self) -> ServerStatus:
