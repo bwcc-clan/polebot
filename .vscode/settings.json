@@ -23,6 +23,7 @@
     "editor.tabSize": 4,
     "editor.formatOnType": false
   },
+  "python.experiments.optInto": ["pythonTestAdapter"],
   "python.testing.pytestArgs": [
     "tests"
   ],

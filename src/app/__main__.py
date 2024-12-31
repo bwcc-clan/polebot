@@ -20,7 +20,7 @@ from .server_manager import ServerManager
 log_level = os.getenv("LOG_LEVEL", "INFO")
 log_location = os.getenv("LOG_LOCATION", "./logs")
 configure_logger(log_location, log_level)
-logger = logging.getLogger("votemapper")
+logger = logging.getLogger("polebot")
 
 os.environ["TZ"] = "UTC"
 time.tzset()

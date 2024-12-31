@@ -20,9 +20,9 @@ class OneLineExceptionFormatter(logging.Formatter):
 
 
 def configure_logger(log_path: str, log_level: str = "INFO") -> None:
-    q = Queue()  # type: ignore
+    buffer_queue = Queue()  # type: ignore
     os.makedirs(log_path, exist_ok=True)
-    logfile = os.path.join(log_path, "votemapper.log")
+    logfile = os.path.join(log_path, "polebot.log")
     logging.config.dictConfig(
         {
             "version": 1,
@@ -41,7 +41,7 @@ def configure_logger(log_path: str, log_level: str = "INFO") -> None:
                     "stream": "ext://sys.stdout",
                 },
                 "file": {
-                    "level": log_level,
+                    "level": "DEBUG",
                     "class": "logging.handlers.TimedRotatingFileHandler",
                     "formatter": "default",
                     "filename": logfile,
@@ -54,7 +54,7 @@ def configure_logger(log_path: str, log_level: str = "INFO") -> None:
                     "class": "logging.handlers.QueueHandler",
                     "handlers": ["console", "file"],
                     "respect_handler_level": True,
-                    "queue": q,
+                    "queue": buffer_queue,
                 },
             },
             "loggers": {

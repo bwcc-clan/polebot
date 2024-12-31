@@ -34,7 +34,7 @@ class HasCache:
         return f"Time: {time.monotonic()}"
 
 def describe_sync_methods():
-    def with_short_ttl_results_change():
+    def results_change_with_short_ttl():
         # *** ARRANGE ***
         sut = HasCache()
 
@@ -48,7 +48,7 @@ def describe_sync_methods():
         assert isinstance(result2, str)
         assert result1 != result2
 
-    def with_long_ttl_results_same():
+    def results_same_with_long_ttl():
         # *** ARRANGE ***
         sut = HasCache()
 
@@ -65,7 +65,7 @@ def describe_sync_methods():
 
 def describe_async_methods():
     @pytest.mark.asyncio()
-    async def with_short_ttl_results_change():
+    async def results_change_with_short_ttl():
         # *** ARRANGE ***
         sut = HasCache()
 
@@ -80,7 +80,7 @@ def describe_async_methods():
         assert result1 != result2
 
     @pytest.mark.asyncio()
-    async def with_long_ttl_results_same():
+    async def results_same_with_long_ttl():
         # *** ARRANGE ***
         sut = HasCache()
 

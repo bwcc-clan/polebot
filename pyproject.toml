@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "votemapper"
+name = "polebot"
 version = "0.1.0"
-description = "Hell Let Loose votemap improver bot for CRCON."
+description = "Poley's Hell Let Loose bot for CRCON."
 authors = ["Rich Tebb <rich@tebb.io>"]
 readme = "README.md"
 packages = [
@@ -50,6 +50,15 @@ myapp = "app.__main__:main"
 pythonpath = ["src", "tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
+describe_prefixes = [
+    "describe_",
+    "when_",
+    "with_",
+    "without_",
+    "if_",
+    "unless_",
+    "for_",
+]
 
 [tool.pyright]
 include = ["src"]
