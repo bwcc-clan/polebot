@@ -25,6 +25,11 @@ logger = logging.getLogger(__name__)
 
 
 class CRCONLogStreamClient:
+    """
+    A client for the CRCON log stream. This client is used to connect to the CRCON log stream, which provides a stream
+    of log messages from the Hell Let Loose server. The client will connect to the CRCON server and read log messages,
+    then forward them onto a processing queue.
+    """
     def __init__(
         self,
         server_config: ServerConfig,
@@ -58,6 +63,7 @@ class CRCONLogStreamClient:
         Continually reads the log stream from a CRCON server. Will reconnect indefinitely unless a permanent exception
         occurs. This should be called as an async task, which can be cancelled to terminate processing.
         """
+
         try:
             delays: Generator[float] | None = None
             async for websocket in self._connect():

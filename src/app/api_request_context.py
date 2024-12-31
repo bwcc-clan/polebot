@@ -20,6 +20,7 @@ class RetryOptionsBase(abc.ABC):
     """
     Base class for request retry options.
     """
+
     def __init__(
         self,
         attempts: int = 3,  # How many times we should retry
@@ -55,6 +56,7 @@ class ExponentialRetry(RetryOptionsBase):
     """
     A retry option with exponential backoff.
     """
+
     def __init__(
         self,
         attempts: int = 3,  # How many times we should retry
@@ -91,6 +93,7 @@ class JitterRetry(ExponentialRetry):
     """
     A retry option with exponential backoff and jitter.
     """
+
     def __init__(
         self,
         attempts: int = 3,  # How many times we should retry
@@ -141,8 +144,9 @@ class ApiRequestParams:
 
 class ApiRequestContext:
     """
-    A context manager that handles making an API request.
+    Context manager for making API requests with retries.
     """
+
     def __init__(
         self,
         session: aiohttp.ClientSession,
@@ -154,7 +158,7 @@ class ApiRequestContext:
         self._session = session
         self._params = params
         self._retry_options = retry_options or JitterRetry()
-        self._logger = logger or logging.getLogger(type(ApiRequestContext).__name__)
+        self._logger = logger or logging.getLogger(__name__)
         self._raise_for_status = raise_for_status
         self._response: aiohttp.ClientResponse | None = None
 

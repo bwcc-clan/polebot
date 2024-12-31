@@ -16,6 +16,13 @@ _SKIRMISH_MODES = {GameMode.CONTROL, GameMode.MAJORITY, GameMode.PHASED}
 
 
 class MapSelector:
+    """
+    A class for selecting maps to be included in the votemap choices. This class is responsible for selecting maps based
+    on the current server status, the server configuration, and the votemap configuration. It uses a weighted selection
+    algorithm iteratively to select a map based on various factors including the configured map weighting, the number of
+    times that or similar maps have already been selected, the environment they are in, and the game mode they support.
+    """
+
     def __init__(
         self,
         server_status: ServerStatus,

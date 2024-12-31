@@ -42,6 +42,15 @@ def shutdown(sig: signal.Signals) -> None:
 async def run_server_manager(
     server_config: ServerConfig, container: Container
 ) -> None:
+    """
+    Creates a DI context for a server configuration, then instantiates and runs the server manager from within that
+    context.
+
+    Args:
+        server_config (ServerConfig): The server configuration.
+        container (Container): The root DI container.
+    """
+
     with begin_server_context(
         container, server_config, _stop_event
     ) as context_container:

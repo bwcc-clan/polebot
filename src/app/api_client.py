@@ -15,6 +15,11 @@ from .config import ServerConfig
 
 
 class CRCONApiClient(AbstractAsyncContextManager):
+    """
+    A client for the CRCON API. This client is used to interact with the CRCON API, which provides an interface to the
+    Hell Let Loose server's RCON interface.
+    """
+
     def __init__(self, server_config: ServerConfig, loop: asyncio.AbstractEventLoop) -> None:
         self._server_config = server_config
         self._loop = loop
