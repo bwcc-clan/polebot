@@ -79,15 +79,16 @@ jobs:
       # they'll be installed and working.
       - run: poetry install --no-interaction
 
+      # Add the venv to the path. This is necessary because the pyright-action doesn't do it for you.
       - run: echo "$(poetry env info --path)/bin" >> $GITHUB_PATH
-
-      # Run Ruff
-      - run: poetry run ruff check
+        name: Add poetry bin to path
 
       - uses: jakebailey/pyright-action@v1
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      # And finally run tests. I'm using pytest and all my pytest config is in my `pyproject.toml`
-      # so this line is super-simple. But it could be as complex as you need.
+      # Run Ruff
+      - run: poetry run ruff check
+
+      # Run tests. I'm using pytest and all my pytest config is in my `pyproject.toml`
       - run: poetry run pytest
