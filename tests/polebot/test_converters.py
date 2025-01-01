@@ -8,8 +8,8 @@ from cattrs.preconf.json import JsonConverter
 from utils import support_files_dir
 from yarl import URL
 
-import app.converters as converters
-from app.api_models import (
+import polebot.converters as converters
+from polebot.api_models import (
     ApiResult,
     ApiResultWithArgs,
     DefaultMethods,
@@ -23,7 +23,7 @@ from app.api_models import (
     Team,
     VoteMapUserConfig,
 )
-from app.config import ServerConfig
+from polebot.config import ServerConfig
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
 

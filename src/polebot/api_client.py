@@ -9,7 +9,7 @@ from typing import Self, Unpack
 import aiohttp
 import aiohttp.typedefs
 
-from app.api_request_context import ApiRequestContext, ApiRequestParams
+from polebot.api_request_context import ApiRequestContext, ApiRequestParams
 
 from . import converters
 from .api_models import ApiResult, Layer, ServerStatus, VoteMapUserConfig
