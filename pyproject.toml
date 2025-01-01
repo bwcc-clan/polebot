@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Poley's Hell Let Loose bot for CRCON."
 authors = ["Rich Tebb <rich@tebb.io>"]
 readme = "README.md"
+license = "MIT"
 packages = [{ include = "app", from = "src" }]
 
 [tool.poetry.dependencies]
@@ -25,7 +26,7 @@ cachetools = "^5.5.0"
 wrapt = "^1.17.0"
 
 [tool.poetry.group.dev.dependencies]
-ruff = "^0.7.3"
+ruff = "0.8.4"
 mypy = "^1.13.0"
 pyright = "^1.1.388"
 pytest = "^8.3.3"
