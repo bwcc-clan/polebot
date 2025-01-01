@@ -82,6 +82,11 @@ jobs:
       # Run Ruff
       - run: poetry run ruff check
 
+      - uses: jakebailey/pyright-action@v1
+        with:
+          version: 1.1.xxx
+          python-version: ${{ env.PYTHON_VERSION }}
+
       # And finally run tests. I'm using pytest and all my pytest config is in my `pyproject.toml`
       # so this line is super-simple. But it could be as complex as you need.
       - run: poetry run pytest
