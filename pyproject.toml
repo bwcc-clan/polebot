@@ -154,7 +154,7 @@ select = [
     # flake8-use-pathlib
     "PTH",
     ]
-ignore = ["ANN101", "ANN102"]   # This is the line that upsets the schema validation
+ignore = []   # This is the line that upsets the schema validation
 
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
