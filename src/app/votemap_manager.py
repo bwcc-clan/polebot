@@ -123,7 +123,7 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
     async def _process_map_ended(self) -> None:
         logger.info("Processing map ended")
         status = await self._get_server_status()
-        logger.debug("Saving current map [%s] to layer history", status.map.id)
+        logger.info("Saving current map [%s] to layer history", status.map.id)
         current_map = status.map.id
         self._layer_history.appendleft(current_map)
 
