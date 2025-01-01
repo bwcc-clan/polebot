@@ -79,6 +79,8 @@ jobs:
       # they'll be installed and working.
       - run: poetry install --no-interaction
 
+      - run: echo "$(poetry env info --path)/bin" >> $GITHUB_PATH
+
       # Run Ruff
       - run: poetry run ruff check
 
