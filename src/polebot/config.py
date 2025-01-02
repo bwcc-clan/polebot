@@ -88,7 +88,10 @@ def get_server_config(app_cfg: AppConfig) -> ServerConfig:
     config_dir = Path(app_cfg.config_dir)
     if not config_dir.is_absolute():
         config_dir = Path(__file__).parent / config_dir
+
+    _logger.debug("Looking for server config files in %s", str(config_dir))
     for file in config_dir.glob("*.json"):
+        _logger.debug("Loading server config file %s", str(file))
         server_config: ServerConfig | None = None
         try:
             contents = file.read_text()

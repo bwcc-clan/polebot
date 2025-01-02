@@ -8,7 +8,6 @@ services:
       - LOG_LOCATION=/var/log/polebot
     volumes:
     - polebot_logs:/var/log/polebot
-    - ./src/polebot/.config:/app/polebot/.config
 
 volumes:
   polebot_logs:
