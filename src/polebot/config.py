@@ -102,4 +102,4 @@ def get_server_config(app_cfg: AppConfig) -> ServerConfig:
         if server_config:
             return server_config
 
-    raise RuntimeError(f"No valid configuration files found in {config_dir}")
+    raise RuntimeError(f"No valid configuration files found in '{config_dir}'")
