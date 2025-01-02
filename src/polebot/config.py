@@ -15,6 +15,11 @@ from .utils import expand_environment
 _logger = logging.getLogger(__name__)
 
 
+def _validate_api_key(_instance: Any, _attribute: Any, value: str) -> None:  # noqa: ANN401
+    if value.strip() == "":
+        raise ValueError("API key must not be blank")
+
+
 def _validate_api_url(_instance: Any, _attribute: Any, value: URL) -> None:  # noqa: ANN401
     if value.scheme not in ["http", "https"]:
         raise ValueError(f"Invalid scheme {value.scheme}")
@@ -28,7 +33,7 @@ def _str_to_url(val: str) -> URL:
 class ServerCRCONDetails:
     """Details for connecting to a server via CRCON."""
     api_url: URL = field(converter=_str_to_url, validator=_validate_api_url)
-    api_key: str = field(converter=expand_environment)
+    api_key: str = field(converter=expand_environment, validator=_validate_api_key)
     websocket_url: URL = field(init=False)
     rcon_headers: dict[str, str] | None = None
 

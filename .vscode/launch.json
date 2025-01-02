@@ -1,14 +1,45 @@
 {
-    // Use IntelliSense to learn about possible attributes.
-    // Hover to view descriptions of existing attributes.
-    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
-    "version": "0.2.0",
-    "configurations": [
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python Debug Polebot",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "polebot"
+    },
+    {
+      "name": "Docker: Python - General",
+      "type": "docker",
+      "request": "launch",
+      "preLaunchTask": "docker-run: debug",
+      "python": {
+        "pathMappings": [
+          {
+            "localRoot": "${workspaceFolder}/src",
+            "remoteRoot": "/app"
+          }
+        ],
+        "projectType": "general",
+        "justMyCode": false
+      }
+    },
+    {
+       "name": "docker-compose: Remote Attach",
+      "type": "debugpy",
+      "request": "attach",
+      "preLaunchTask": "docker-compose up",
+      "postDebugTask": "docker-compose down",
+      "connect": { "host": "localhost", "port": 5678 },
+      "pathMappings": [
         {
-            "name": "Python Debug Polebot",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "polebot"
+          "localRoot": "${workspaceFolder}/src",
+          "remoteRoot": "/app"
         }
-    ]
+      ],
+      "justMyCode": false
+    }
+  ]
 }
