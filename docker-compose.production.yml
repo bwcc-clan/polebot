@@ -9,6 +9,7 @@ services:
       - APP_CONFIG_DIR=${APP_CONFIG_DIR:-.config}
     volumes:
     - polebot_logs:/var/log/polebot
+    - /apps/polebot/.config:/app/.config
 
 volumes:
   polebot_logs:
