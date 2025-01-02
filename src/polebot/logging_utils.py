@@ -2,6 +2,7 @@
 """This module contains the logging configuration for the application."""
 
 import atexit
+import contextlib
 import logging
 import logging.config
 from pathlib import Path
@@ -20,17 +21,30 @@ class OneLineExceptionFormatter(logging.Formatter):
         return s
 
 
-def configure_logger(log_path: str, log_level: str = "INFO") -> None:
+def configure_logger(log_dir: str, log_levels: str = ":INFO") -> None:
     """Configures the logger for the application.
 
     Args:
-        log_path (str): The path to where to store the log files.
-        log_level (str, optional): The console log level. Defaults to "INFO".
+        log_dir (str): The path to where to store the log files.
+        log_levels (str, optional): A string that defines log levels for various named loggers. Defaults to ":INFO".
+
+
+    A valid `log_levels` string looks something like this:
+        discord:DEBUG,discord.http:INFO,:ERROR,custom:35
+
+    The above would set the following log levels:
+        * root:               ERROR
+        * discord             DEBUG
+        * discord.http        INFO
+        * custom              35
+
+    A special case is the logger named `!console` which will set the `console` log handler to the specified level.
     """
+    logger_level_map = _parse_log_levels(log_levels)
     buffer_queue = Queue()  # type: ignore
-    log_path_l = Path(log_path)
-    log_path_l.mkdir(parents=True, exist_ok=True)
-    logfile = log_path_l / "polebot.log"
+    log_path = Path(log_dir)
+    log_path.mkdir(parents=True, exist_ok=True)
+    logfile = log_path / "polebot.log"
     logging.config.dictConfig(
         {
             "version": 1,
@@ -43,7 +57,7 @@ def configure_logger(log_path: str, log_level: str = "INFO") -> None:
             },
             "handlers": {
                 "console": {
-                    "level": log_level,
+                    "level": logger_level_map.get("!console", None) or logger_level_map["root"],
                     "class": "logging.StreamHandler",
                     "formatter": "default",
                     "stream": "ext://sys.stdout",
@@ -66,7 +80,7 @@ def configure_logger(log_path: str, log_level: str = "INFO") -> None:
                 },
             },
             "loggers": {
-                "root": {"level": log_level, "handlers": ["queue_handler"]},
+                "root": {"level": logger_level_map["root"], "handlers": ["queue_handler"]},
                 "urllib3.connectionpool": {"level": "INFO"},
             },
             "disable_existing_loggers": False,
@@ -75,3 +89,48 @@ def configure_logger(log_path: str, log_level: str = "INFO") -> None:
     qh = logging.getHandlerByName("queue_handler")
     qh.listener.start()  # type: ignore
     atexit.register(qh.listener.stop)  # type: ignore[union-attr]
+
+    for logger_name, level_text in logger_level_map.items():
+        if logger_name == "!console":
+            continue
+        logger = logging.getLogger() if logger_name in ["", "root"] else logging.getLogger(logger_name)
+        logger.setLevel(level_text)
+    _update_log_handlers()
+    logging.getLogger().info("Log levels = '%s'", log_levels)
+
+
+def _parse_log_levels(log_levels: str) -> dict[str, str]:
+    level_map = logging.getLevelNamesMapping()
+    levels: dict[str, str] = {}
+    for item in [x.split(":") for x in [c.strip() for c in log_levels.split(",") if c.strip()]]:
+        with contextlib.suppress(ValueError):  # Ignore badly-formatted input values
+            logger_name, level_text, *_ = item
+            logger_name = logger_name.strip()
+            level_text = level_text.strip()
+
+            logger_name = "root" if logger_name == "" else logger_name
+            if level_text not in level_map:
+                if level_text.isdigit():
+                    # level_text is a numeric value - we can use it directly
+                    levels[logger_name] = level_text
+                # level_text is an invalid numeric value - just ignore
+                continue
+            else:
+                levels[logger_name] = level_text
+
+    if "root" not in levels:
+        levels["root"] = "INFO"
+    return levels
+
+def _update_log_handlers() -> None:
+    """Reconfigure all loggers to use the same handlers as the root logger.
+
+    Removes individual handlers in all loggers and enables propagation so they use the same handler as root. This is so
+    that any loggers that were instantiated during program initialisation will use our configured values instead of
+    their default values.
+    """
+    loggers = [logging.getLogger(name) for name in logging.root.manager.loggerDict]
+
+    for logger in loggers:
+        logger.propagate = True
+        logger.handlers.clear()
