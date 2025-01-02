@@ -19,7 +19,7 @@ from .config import AppConfig, ServerConfig, get_server_config
 from .logging_utils import configure_logger
 from .server_manager import ServerManager
 
-log_level = os.getenv("LOG_LEVEL", "INFO")
+log_level = os.getenv("LOG_LEVELS", ":INFO")
 log_location = os.getenv("LOG_LOCATION", "./logs")
 configure_logger(log_location, log_level)
 logger = logging.getLogger("polebot")
