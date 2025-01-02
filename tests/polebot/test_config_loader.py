@@ -5,10 +5,10 @@ import pytest
 from cattrs.preconf.json import JsonConverter
 from utils import support_files_dir
 
-from app import converters
-from app.api_models import ApiResult, Layer
-from app.config import EnvironmentGroupConfig, MapGroupConfig, ServerConfig, ServerCRCONDetails, WeightingConfig
-from app.map_selector.config_loader import get_config_dataframes, get_layer_dataframes
+from polebot import converters
+from polebot.api_models import ApiResult, Layer
+from polebot.config import EnvironmentGroupConfig, MapGroupConfig, ServerConfig, ServerCRCONDetails, WeightingConfig
+from polebot.map_selector.config_loader import get_config_dataframes, get_layer_dataframes
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
 

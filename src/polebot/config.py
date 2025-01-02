@@ -15,6 +15,11 @@ from .utils import expand_environment
 _logger = logging.getLogger(__name__)
 
 
+def _validate_api_key(_instance: Any, _attribute: Any, value: str) -> None:  # noqa: ANN401
+    if value.strip() == "":
+        raise ValueError("API key must not be blank")
+
+
 def _validate_api_url(_instance: Any, _attribute: Any, value: URL) -> None:  # noqa: ANN401
     if value.scheme not in ["http", "https"]:
         raise ValueError(f"Invalid scheme {value.scheme}")
@@ -28,7 +33,7 @@ def _str_to_url(val: str) -> URL:
 class ServerCRCONDetails:
     """Details for connecting to a server via CRCON."""
     api_url: URL = field(converter=_str_to_url, validator=_validate_api_url)
-    api_key: str = field(converter=expand_environment)
+    api_key: str = field(converter=expand_environment, validator=_validate_api_key)
     websocket_url: URL = field(init=False)
     rcon_headers: dict[str, str] | None = None
 
@@ -83,7 +88,10 @@ def get_server_config(app_cfg: AppConfig) -> ServerConfig:
     config_dir = Path(app_cfg.config_dir)
     if not config_dir.is_absolute():
         config_dir = Path(__file__).parent / config_dir
+
+    _logger.debug("Looking for server config files in %s", str(config_dir))
     for file in config_dir.glob("*.json"):
+        _logger.debug("Loading server config file %s", str(file))
         server_config: ServerConfig | None = None
         try:
             contents = file.read_text()
@@ -94,4 +102,4 @@ def get_server_config(app_cfg: AppConfig) -> ServerConfig:
         if server_config:
             return server_config
 
-    raise RuntimeError(f"No valid configuration files found in {config_dir}")
+    raise RuntimeError(f"No valid configuration files found in '{config_dir}'")

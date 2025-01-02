@@ -5,11 +5,11 @@ from unittest.mock import AsyncMock
 import pytest
 from utils import support_files_dir
 
-from app import converters
-from app.api_client import CRCONApiClient
-from app.api_models import ApiResult, Layer, ServerStatus, VoteMapUserConfig
-from app.config import EnvironmentGroupConfig, MapGroupConfig, ServerConfig, ServerCRCONDetails, WeightingConfig
-from app.votemap_manager import VotemapManager
+from polebot import converters
+from polebot.api_client import CRCONApiClient
+from polebot.api_models import ApiResult, Layer, ServerStatus, VoteMapUserConfig
+from polebot.config import EnvironmentGroupConfig, MapGroupConfig, ServerConfig, ServerCRCONDetails, WeightingConfig
+from polebot.votemap_manager import VotemapManager
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
 

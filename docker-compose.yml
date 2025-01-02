@@ -1,0 +1,20 @@
+
+services:
+  polebot:
+    image: polebot
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    networks:
+    - crcon-net
+    - backend-net
+    volumes:
+    - polebot_logs:/var/log/polebot
+
+networks:
+  # This is the network that contains the CRCON instance
+  crcon-net: {}
+  # This is the network that contains the MongoDB instance
+  backend-net: {}
+

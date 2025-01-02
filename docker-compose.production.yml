@@ -1,0 +1,25 @@
+
+services:
+  polebot:
+    pull_policy: build
+    environment:
+      - RCON_API_KEY=${RCON_API_KEY}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_LOCATION=/var/log/polebot
+      - APP_CONFIG_DIR=/app/.config
+    volumes:
+    - polebot_logs:/var/log/polebot
+    - /apps/polebot/.config:/app/.config
+
+volumes:
+  polebot_logs:
+    external: true
+    name: polebot_logs
+
+networks:
+  crcon-net:
+    external: true
+    name: nginx_hll_rcon_tool_1_server1
+  backend-net:
+    external: true
+    name: mongodb_net

@@ -4,16 +4,16 @@ from collections import deque
 import pytest
 from utils import support_files_dir
 
-import app.converters as converters
-from app.api_models import (
+import polebot.converters as converters
+from polebot.api_models import (
     ApiResult,
     GameMode,
     Layer,
     ServerStatus,
     VoteMapUserConfig,
 )
-from app.config import EnvironmentGroupConfig, MapGroupConfig, ServerConfig, ServerCRCONDetails, WeightingConfig
-from app.map_selector.selector import _SKIRMISH_MODES, MapSelector
+from polebot.config import EnvironmentGroupConfig, MapGroupConfig, ServerConfig, ServerCRCONDetails, WeightingConfig
+from polebot.map_selector.selector import _SKIRMISH_MODES, MapSelector
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
 

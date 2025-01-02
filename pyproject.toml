@@ -5,7 +5,7 @@ description = "Poley's Hell Let Loose bot for CRCON."
 authors = ["Rich Tebb <rich@tebb.io>"]
 readme = "README.md"
 license = "MIT"
-packages = [{ include = "app", from = "src" }]
+packages = [{ include = "polebot", from = "src" }]
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -43,7 +43,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-myapp = "app.__main__:main"
+polebot = "polebot.__main__:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "tests"]
@@ -170,7 +170,7 @@ known-local-folder = ["src"]
 
 [tool.ruff.lint.per-file-ignores]
 "*.ipynb" = ["E402"]
-"src/app/api_models.py" = [
+"src/polebot/api_models.py" = [
     "UP",
     "D",
 ] # this file is copied from hll_rcon_tool code so we don't want to modify it

@@ -1,0 +1,49 @@
+
+services:
+  polebot:
+    image: polebot
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      target: debug
+    command: ["sh", "-c", "python /tmp/debugpy --wait-for-client --listen 0.0.0.0:5678 -m polebot "]
+    ports:
+      - 5678:5678
+    environment:
+      - RCON_API_KEY=${RCON_API_KEY}
+      - LOG_LEVEL=${LOG_LEVEL:-DEBUG}
+      - PYDEVD_DISABLE_FILE_VALIDATION=1
+      - LOG_LOCATION=/var/log/polebot
+    networks:
+    - crcon-net
+    - backend-net
+    volumes:
+    - ./logs:/var/log/polebot
+    - ./src/polebot/.config:/app/polebot/.config
+
+#   mongo:
+#     image: mongo:7-jammy
+#     restart: unless-stopped
+#     environment:
+#       MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME}
+#       MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
+#     networks:
+#     - backend-net
+#     volumes:
+#     - seed-vip-mongo-vol:/data/db
+
+#   mongo-express:
+#     image: mongo-express
+#     restart: unless-stopped
+#     environment:
+#       ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGODB_ROOT_USERNAME}
+#       ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGODB_ROOT_PASSWORD}
+#       ME_CONFIG_MONGODB_URL: mongodb://${MONGODB_ROOT_USERNAME}:${MONGODB_ROOT_PASSWORD}@mongo:27017/
+#     networks:
+#     - crcon-net
+#     - backend-net
+
+# volumes:
+#   seed-vip-mongo-vol:
+#     driver: local
+

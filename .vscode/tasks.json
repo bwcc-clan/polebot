@@ -1,0 +1,69 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "docker-build",
+      "label": "docker-build",
+      "platform": "python",
+      "dockerBuild": {
+        "tag": "polebot:latest",
+        "dockerfile": "${workspaceFolder}/Dockerfile",
+        "context": "${workspaceFolder}",
+        "pull": true,
+        "target": "debug"
+      }
+    },
+    {
+      "type": "docker-run",
+      "label": "docker-run: debug",
+      "dependsOn": ["docker-build"],
+      "python": {
+        "debugPort": 5678,
+        "module": "polebot"
+      },
+      "dockerRun": {
+        "envFiles": [".env"],
+        "env": {
+          "LOG_LOCATION": "/var/log/polebot"
+        },
+        "volumes": [
+          {
+            "localPath": "${workspaceFolder}/src/polebot/.config",
+            "containerPath": "/app/polebot/.config",
+            "permissions": "ro"
+          }
+        ],
+      }
+    },
+    {
+      "label": "docker-compose up",
+      "type": "docker-compose",
+      "dockerCompose": {
+        "up": {
+          "detached": true,
+          "build": true,
+        },
+        "files": [
+          "${workspaceFolder}/docker-compose.yml",
+          "${workspaceFolder}/docker-compose.debug.yml"
+        ],
+        "envFiles": [".env"],
+        "env": {
+          "LOG_LOCATION": "/var/log/polebot"
+        }
+      }
+    },
+    {
+      "label": "docker-compose down",
+      "type": "docker-compose",
+      "dockerCompose": {
+        "down": {},
+        "files": [
+          "${workspaceFolder}/docker-compose.yml",
+          "${workspaceFolder}/docker-compose.debug.yml"
+        ],
+        "envFiles": [".env"]
+      }
+    }
+  ]
+}
