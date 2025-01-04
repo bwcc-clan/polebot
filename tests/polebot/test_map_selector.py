@@ -12,8 +12,14 @@ from polebot.api_models import (
     ServerStatus,
     VoteMapUserConfig,
 )
-from polebot.config import EnvironmentGroupConfig, MapGroupConfig, ServerConfig, ServerCRCONDetails, WeightingConfig
 from polebot.map_selector.selector import _SKIRMISH_MODES, MapSelector
+from polebot.server_params import (
+    EnvironmentGroup,
+    MapGroup,
+    ServerCRCONDetails,
+    ServerParameters,
+    WeightingParameters,
+)
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
 
@@ -34,27 +40,27 @@ def describe_get_warfare():
         return {layer.id: layer for layer in standard_layers}
 
     @pytest.fixture
-    def standard_server_config() -> ServerConfig:
+    def standard_server_params() -> ServerParameters:
         crcon_details = ServerCRCONDetails(api_url="https://hll.example.com", api_key="dummy")
-        weighting_config = WeightingConfig(
+        weighting_params = WeightingParameters(
             groups={
-                "Top": MapGroupConfig(
+                "Top": MapGroup(
                     weight=100,
                     repeat_decay=0.8,
                     maps=["carentan", "omahabeach", "stmariedumont", "stmereeglise", "utahbeach"],
                 ),
-                "Mid": MapGroupConfig(
+                "Mid": MapGroup(
                     weight=80,
                     repeat_decay=0.5,
                     maps=["elsenbornridge", "foy", "hill400"],
                 ),
             },
             environments={
-                "Day": EnvironmentGroupConfig(weight=100, repeat_decay=0.8, environments=["day", "dawn"]),
-                "Night": EnvironmentGroupConfig(weight=50, repeat_decay=0.1, environments=["night"]),
+                "Day": EnvironmentGroup(weight=100, repeat_decay=0.8, environments=["day", "dawn"]),
+                "Night": EnvironmentGroup(weight=50, repeat_decay=0.1, environments=["night"]),
             },
         )
-        return ServerConfig(server_name="Test", crcon_details=crcon_details, weighting_config=weighting_config)
+        return ServerParameters(server_name="Test", crcon_details=crcon_details, weighting_params=weighting_params)
 
     @pytest.fixture
     def standard_status(standard_layers_by_id: dict[str, Layer]) -> ServerStatus:
@@ -86,13 +92,13 @@ def describe_get_warfare():
 
     def describe_happy_path():
         def selects_configured_number_of_warfare(
-            standard_server_config: ServerConfig,
+            standard_server_params: ServerParameters,
             standard_status: ServerStatus,
             standard_layers_by_id: dict[str, Layer],
         ):
             # *** ARRANGE ***
             vmuc = VoteMapUserConfig(num_warfare_options=6)
-            sut = MapSelector(standard_status, list(standard_layers_by_id.values()), standard_server_config, vmuc, [])
+            sut = MapSelector(standard_status, list(standard_layers_by_id.values()), standard_server_params, vmuc, [])
 
             # *** ACT ***
             result = sut._get_warfare()
@@ -101,13 +107,13 @@ def describe_get_warfare():
             assert len(list(result)) == 6
 
         def selects_configured_number_of_offensive(
-            standard_server_config: ServerConfig,
+            standard_server_params: ServerParameters,
             standard_status: ServerStatus,
             standard_layers_by_id: dict[str, Layer],
         ):
             # *** ARRANGE ***
             vmuc = VoteMapUserConfig(num_offensive_options=6)
-            sut = MapSelector(standard_status, list(standard_layers_by_id.values()), standard_server_config, vmuc, [])
+            sut = MapSelector(standard_status, list(standard_layers_by_id.values()), standard_server_params, vmuc, [])
 
             # *** ACT ***
             result = sut._get_offensive()
@@ -116,13 +122,13 @@ def describe_get_warfare():
             assert len(list(result)) == 6
 
         def selects_configured_number_of_skirmish(
-            standard_server_config: ServerConfig,
+            standard_server_params: ServerParameters,
             standard_status: ServerStatus,
             standard_layers_by_id: dict[str, Layer],
         ):
             # *** ARRANGE ***
             vmuc = VoteMapUserConfig(num_skirmish_control_options=6)
-            sut = MapSelector(standard_status, list(standard_layers_by_id.values()), standard_server_config, vmuc, [])
+            sut = MapSelector(standard_status, list(standard_layers_by_id.values()), standard_server_params, vmuc, [])
 
             # *** ACT ***
             result = sut._get_skirmish()
@@ -132,7 +138,7 @@ def describe_get_warfare():
 
     def describe_with_map_history_as_deque():
         def selects_configured_number_of_warfare(
-            standard_server_config: ServerConfig,
+            standard_server_params: ServerParameters,
             standard_status: ServerStatus,
             standard_layers_by_id: dict[str, Layer],
         ):
@@ -145,7 +151,7 @@ def describe_get_warfare():
             sut = MapSelector(
                 standard_status,
                 list(standard_layers_by_id.values()),
-                standard_server_config,
+                standard_server_params,
                 vmuc,
                 recent_layer_history,
             )
@@ -159,13 +165,13 @@ def describe_get_warfare():
     def describe_analyze_results():
         @pytest.fixture
         def results_no_history(
-            standard_server_config: ServerConfig,
+            standard_server_params: ServerParameters,
             standard_status: ServerStatus,
             standard_layers_by_id: dict[str, Layer],
             standard_votemap_config: VoteMapUserConfig,
         ):
             return _generate_some_results(
-                standard_server_config,
+                standard_server_params,
                 standard_status,
                 standard_layers_by_id,
                 standard_votemap_config,
@@ -173,13 +179,13 @@ def describe_get_warfare():
 
         @pytest.fixture
         def results_current_map_offensive_us(
-            standard_server_config: ServerConfig,
+            standard_server_params: ServerParameters,
             status_current_layer_offensive_us: ServerStatus,
             standard_layers_by_id: dict[str, Layer],
             standard_votemap_config: VoteMapUserConfig,
         ):
             return _generate_some_results(
-                standard_server_config,
+                standard_server_params,
                 status_current_layer_offensive_us,
                 standard_layers_by_id,
                 standard_votemap_config,
@@ -209,7 +215,7 @@ def describe_get_warfare():
 
         def no_consecutive_offensives(
             standard_layers_by_id: dict[str, Layer],
-            standard_server_config: ServerConfig,
+            standard_server_params: ServerParameters,
             status_current_layer_offensive_us: ServerStatus,
         ):
             votemap_config = VoteMapUserConfig(
@@ -219,7 +225,7 @@ def describe_get_warfare():
                 allow_consecutive_offensives=False,
             )
             results = _generate_some_results(
-                standard_server_config,
+                standard_server_params,
                 status_current_layer_offensive_us,
                 standard_layers_by_id,
                 votemap_config,
@@ -230,12 +236,12 @@ def describe_get_warfare():
 
 
 def _generate_some_results(
-    server_config: ServerConfig,
+    server_params: ServerParameters,
     server_status: ServerStatus,
     layers_by_id: dict[str, Layer],
     votemap_config: VoteMapUserConfig,
 ) -> list[list[str]]:
-    sut = MapSelector(server_status, list(layers_by_id.values()), server_config, votemap_config, [])
+    sut = MapSelector(server_status, list(layers_by_id.values()), server_params, votemap_config, [])
     result_sets: list[list[str]] = []
     for _i in range(50):
         result_sets.append(list(sut.get_selection()))

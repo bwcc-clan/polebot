@@ -10,9 +10,9 @@ from types import TracebackType
 from typing import NoReturn, Self
 
 from .api_models import LogMessageType, LogStreamObject
-from .config import ServerConfig
 from .exceptions import TerminateTaskGroup
 from .log_stream_client import CRCONLogStreamClient
+from .server_params import ServerParameters
 from .votemap_manager import VotemapManager
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
     """The server manager is responsible for managing the server lifecycle of a single CRCON server instance."""
     def __init__(
         self,
-        server_config: ServerConfig,
+        server_params: ServerParameters,
         loop: asyncio.AbstractEventLoop,
         log_stream_client: CRCONLogStreamClient,
         votemap_manager: VotemapManager,
@@ -34,13 +34,13 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
         """Initialise the server manager.
 
         Args:
-            server_config (ServerConfig): The server configuration.
+            server_params (ServerParameters): The server parameters.
             loop (asyncio.AbstractEventLoop): The event loop to use for async operations.
             log_stream_client (CRCONLogStreamClient): The log stream client to use for log message retrieval.
             votemap_manager (VotemapManager): The votemap manager to use for votemap selection.
             stop_event (asyncio.Event | None, optional): If specified, an event that will stop the instance when fired.
         """
-        self.server_config = server_config
+        self._server_params = server_params
         self._loop = loop
         self._stop_event = stop_event
         self._queue = asyncio.Queue[LogStreamObject](_QUEUE_SIZE)

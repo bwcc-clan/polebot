@@ -8,8 +8,8 @@ import numpy as np
 import pandas as pd
 
 from ..api_models import GameMode, Layer, ServerStatus, VoteMapUserConfig
-from ..config import ServerConfig
-from .config_loader import get_config_dataframes, get_layer_dataframes
+from ..server_params import ServerParameters
+from .data_loader import get_layer_dataframes, get_params_dataframes
 
 _logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class MapSelector:
         self,
         server_status: ServerStatus,
         layers: Iterable[Layer],
-        server_config: ServerConfig,
+        server_params: ServerParameters,
         votemap_config: VoteMapUserConfig,
         recent_layer_history: Sequence[str],
         logger: logging.Logger = _logger,
@@ -40,7 +40,7 @@ class MapSelector:
         Args:
             server_status (ServerStatus): The current server status.
             layers (Iterable[Layer]): A list of layers that the server supports.
-            server_config (ServerConfig): The configuration settings for the server.
+            server_params (ServerParameters): The configuration settings for the server.
             votemap_config (VoteMapUserConfig): The server's votemap configuration.
             recent_layer_history (Sequence[str]): An ordered list of the most recently played map layer IDs,
             most-recently-played last.
@@ -55,7 +55,7 @@ class MapSelector:
         self._layers_by_id = {layer.id: layer for layer in layers}
         self._current_layer = self._server_status.map
 
-        config_data = get_config_dataframes(server_config)
+        config_data = get_params_dataframes(server_params)
         self._df_map_groups = config_data.df_map_groups
         self._df_environments = config_data.df_environments
         map_data = get_layer_dataframes(layers=list(layers))

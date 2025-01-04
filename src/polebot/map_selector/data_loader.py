@@ -5,31 +5,31 @@ from attrs import define
 
 from .. import converters
 from ..api_models import Layer
-from ..config import ServerConfig
+from ..server_params import ServerParameters
 
 
 @define(kw_only=True)
-class ConfigData:
-    """Dataframes that represent the server configuration."""
+class ServerParamsData:
+    """Dataframes that represent the server parameters."""
     df_map_groups: pd.DataFrame
     df_environments: pd.DataFrame
 
 
-def get_config_dataframes(server_config: ServerConfig) -> ConfigData:
+def get_params_dataframes(server_params: ServerParameters) -> ServerParamsData:
     """Gets an object that contains dataframes that represent the server configuration.
 
     Args:
-        server_config (ServerConfig): The server configuration to read from.
+        server_params (ServerParameters): The server configuration to read from.
 
     Returns:
         ConfigData: An object that contains the config dataframes.
     """
-    json_converter = converters.make_config_converter()
-    config = json_converter.unstructure(server_config)
+    json_converter = converters.make_params_converter()
+    config = json_converter.unstructure(server_params)
 
     df_map_groups = (
         (
-            pd.DataFrame.from_dict(config["weighting_config"]["groups"], orient="index")
+            pd.DataFrame.from_dict(config["weighting_params"]["groups"], orient="index")
             .reset_index(names="group")
             .explode("maps")
         )
@@ -46,7 +46,7 @@ def get_config_dataframes(server_config: ServerConfig) -> ConfigData:
 
     df_environments = (
         (
-            pd.DataFrame.from_dict(config["weighting_config"]["environments"], orient="index")
+            pd.DataFrame.from_dict(config["weighting_params"]["environments"], orient="index")
             .reset_index(names="environment")
             .explode("environments")
         )
@@ -61,7 +61,7 @@ def get_config_dataframes(server_config: ServerConfig) -> ConfigData:
         .set_index("environment")
     )
 
-    return ConfigData(df_map_groups=df_map_groups, df_environments=df_environments)
+    return ServerParamsData(df_map_groups=df_map_groups, df_environments=df_environments)
 
 
 @define(kw_only=True)

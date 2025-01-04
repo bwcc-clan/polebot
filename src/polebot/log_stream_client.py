@@ -19,8 +19,8 @@ from websockets.asyncio.client import (
 
 from . import converters
 from .api_models import LogMessageType, LogStreamObject, LogStreamResponse
-from .config import ServerConfig
 from .exceptions import LogStreamMessageError
+from .server_params import ServerParameters
 from .utils import backoff
 
 logger = logging.getLogger(__name__)
@@ -35,23 +35,23 @@ class CRCONLogStreamClient:
     """
     def __init__(
         self,
-        server_config: ServerConfig,
+        server_params: ServerParameters,
         queue: asyncio.Queue[LogStreamObject],
         log_types: list[LogMessageType] | None = None,
     ) -> None:
         """Initialises the CRCON log stream client.
 
         Args:
-            server_config (ServerConfig): The server configuration.
+            server_params (ServerParameters): The server configuration.
             queue (asyncio.Queue[LogStreamObject]): The queue to which log messages should be forwarded.
             log_types (list[LogMessageType] | None, optional): The allowable log message types. Defaults to None,
             which indicates that all are allowed.
         """
-        self.server_config = server_config
+        self._server_params = server_params
         self._queue = queue
         self.log_types: list[LogMessageType] | None = log_types
 
-        self.websocket_url = self.server_config.crcon_details.websocket_url / "ws/logs"
+        self.websocket_url = self._server_params.crcon_details.websocket_url / "ws/logs"
         self.last_seen_id: str | None = None
         self._first_connection = True
         self._converter = converters.make_rcon_converter()
@@ -118,9 +118,9 @@ class CRCONLogStreamClient:
             raise
 
     def _connect(self) -> websockets.connect:
-        headers = {"Authorization": f"Bearer {self.server_config.crcon_details.api_key}"}
-        if self.server_config.crcon_details.rcon_headers:
-            headers.update(self.server_config.crcon_details.rcon_headers)
+        headers = {"Authorization": f"Bearer {self._server_params.crcon_details.api_key}"}
+        if self._server_params.crcon_details.rcon_headers:
+            headers.update(self._server_params.crcon_details.rcon_headers)
 
         # Note that we handle exceptions more aggressively on first connection, because e.g. DNS errors are more
         # likely to be configuration mistakes. On subsequent re-connection attempts, since the configuration has

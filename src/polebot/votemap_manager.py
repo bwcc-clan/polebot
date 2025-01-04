@@ -20,8 +20,8 @@ from .api_models import (
     VoteMapUserConfig,
 )
 from .cache_utils import CacheItem, cache_item_ttu, ttl_cached
-from .config import ServerConfig
 from .map_selector import MapSelector
+from .server_params import ServerParameters
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
 
     def __init__(
         self,
-        server_config: ServerConfig,
+        server_params: ServerParameters,
         queue: asyncio.Queue[LogStreamObject],
         api_client: CRCONApiClient,
         loop: asyncio.AbstractEventLoop,
@@ -39,12 +39,12 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
         """Initialise the votemap manager.
 
         Args:
-            server_config (ServerConfig): The server configuration.
+            server_params (ServerParameters): The server configuration.
             queue (asyncio.Queue[LogStreamObject]): The queue to receive log messages from.
             api_client (CRCONApiClient): The API client to use for CRCON server communication.
             loop (asyncio.AbstractEventLoop): The event loop to use for async operations.
         """
-        self._server_config = server_config
+        self._server_params = server_params
         self._votemap_config: VoteMapUserConfig | None = None
         self._queue = queue
         self._api_client = api_client
@@ -137,7 +137,7 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
         selector = MapSelector(
             server_status=status,
             layers=layers,
-            server_config=self._server_config,
+            server_params=self._server_params,
             votemap_config=votemap_config,
             recent_layer_history=self._layer_history,
         )

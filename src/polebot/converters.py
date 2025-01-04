@@ -26,8 +26,8 @@ def make_rcon_converter() -> JsonConverter:
     return rcon_converter
 
 
-def make_config_converter() -> JsonConverter:
-    """Creates a JSON converter for server configuration.
+def make_params_converter() -> JsonConverter:
+    """Creates a JSON converter for server parameters.
 
     Returns:
         JsonConverter: The JSON converter.

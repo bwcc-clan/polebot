@@ -5,7 +5,7 @@ import pytest_asyncio
 from aioresponses import aioresponses
 
 from polebot.api_client import CRCONApiClient
-from polebot.config import ServerConfig, ServerCRCONDetails, WeightingConfig
+from polebot.server_params import ServerCRCONDetails, ServerParameters, WeightingParameters
 
 
 def describe_when_not_entered():
@@ -20,12 +20,12 @@ def describe_when_not_entered():
     @pytest.fixture()
     def sut(current_loop: asyncio.AbstractEventLoop) -> CRCONApiClient:
         server_details = ServerCRCONDetails(api_url="https://my.example.com", api_key="1234567890")
-        server_config = ServerConfig(
+        server_params = ServerParameters(
             server_name="Test",
             crcon_details=server_details,
-            weighting_config=WeightingConfig(environments={}, groups={}),
+            weighting_params=WeightingParameters(environments={}, groups={}),
         )
-        return CRCONApiClient(server_config=server_config, loop=current_loop)
+        return CRCONApiClient(server_params=server_params, loop=current_loop)
 
     @pytest.mark.asyncio()
     async def get_status_raises_exception(sut: CRCONApiClient):
@@ -52,12 +52,12 @@ def describe_when_entered():
     @pytest_asyncio.fixture()
     async def sut(current_loop: asyncio.AbstractEventLoop):
         server_details = ServerCRCONDetails(api_url="https://my.example.com", api_key="1234567890")
-        server_config = ServerConfig(
+        server_params = ServerParameters(
             server_name="Test",
             crcon_details=server_details,
-            weighting_config=WeightingConfig(environments={}, groups={}),
+            weighting_params=WeightingParameters(environments={}, groups={}),
         )
-        async with CRCONApiClient(server_config=server_config, loop=current_loop) as sut:
+        async with CRCONApiClient(server_params=server_params, loop=current_loop) as sut:
             yield sut
 
     def describe_get_status():

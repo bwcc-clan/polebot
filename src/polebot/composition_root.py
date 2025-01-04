@@ -11,14 +11,16 @@ from lagom import (
     context_dependency_definition,
     dependency_definition,
 )
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from typeguard import TypeCheckError, check_type
 
 from .api_client import CRCONApiClient
 from .api_models import LogStreamObject
-from .config import AppConfig, ServerConfig
+from .app_config import AppConfig
 from .log_stream_client import CRCONLogStreamClient
 from .map_selector.selector import MapSelector
 from .server_manager import ServerManager
+from .server_params import ServerParameters
 from .votemap_manager import VotemapManager
 
 X = TypeVar("X")
@@ -66,6 +68,8 @@ def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop) -> Co
         return container
 
     container[AppConfig] = app_config
+    container[AsyncIOMotorClient] = AsyncIOMotorClient(app_config.mongodb.connection_string, tz_aware=True)
+    container[AsyncIOMotorDatabase] = container[AsyncIOMotorClient][app_config.mongodb.db_name]
 
     @dependency_definition(container, singleton=True)
     def _get_event_loop() -> asyncio.AbstractEventLoop:
@@ -86,14 +90,14 @@ _QUEUE_SIZE = 1000
 
 def begin_server_context(
     container: Container,
-    server_config: ServerConfig,
+    server_params: ServerParameters,
     stop_event: asyncio.Event | None = None,
 ) -> ContextContainer:
     """Begin the server context by creating a nested DI container context.
 
     Args:
         container (Container): The parent container.
-        server_config (ServerConfig): The server configuration for the server in this context.
+        server_params (ServerParameters): The server configuration for the server within this context.
         stop_event (asyncio.Event | None, optional): If specified, an event that terminates the application. Defaults to
         None.
 
@@ -111,7 +115,7 @@ def begin_server_context(
             CRCONApiClient,
         ],
     )
-    context_container[ServerConfig] = server_config
+    context_container[ServerParameters] = server_params
     if stop_event:
         context_container[asyncio.Event] = stop_event
     context_container[asyncio.Queue[LogStreamObject]] = asyncio.Queue[LogStreamObject](_QUEUE_SIZE)
@@ -120,9 +124,9 @@ def begin_server_context(
 
 # def create_server_manager(
 #     container: Container,
-#     server_config: ServerConfig,
+#     server_params: ServerParameters,
 #     stop_event: asyncio.Event | None = None,
 # ) -> ServerManager:
 #     factory = container.magic_partial(ServerManager)
-#     server_manager = factory(server_config, stop_event=stop_event)
+#     server_manager = factory(server_params, stop_event=stop_event)
 #     return server_manager

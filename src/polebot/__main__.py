@@ -11,13 +11,14 @@ import uvloop
 from dotenv import load_dotenv
 from lagom import Container
 
+from .app_config import AppConfig
 from .composition_root import (
     begin_server_context,
     init_container,
 )
-from .config import AppConfig, ServerConfig, get_server_config
 from .logging_utils import configure_logger
 from .server_manager import ServerManager
+from .server_params import ServerParameters, get_server_params
 
 log_level = os.getenv("LOG_LEVELS", ":INFO")
 log_location = os.getenv("LOG_LOCATION", "./logs")
@@ -43,22 +44,26 @@ def shutdown(sig: signal.Signals) -> None:
 
 
 async def run_server_manager(
-    server_config: ServerConfig, container: Container,
+    server_params: ServerParameters,
+    container: Container,
 ) -> None:
     """Runs the server manager for the specified server configuration.
 
     Creates a DI context for the server, then instantiates and runs the server manager from within that context.
 
     Args:
-        server_config (ServerConfig): The server configuration.
+        server_params (ServerParameters): The server configuration.
         container (Container): The root DI container.
     """
     with begin_server_context(
-        container, server_config, _stop_event,
+        container,
+        server_params,
+        _stop_event,
     ) as context_container:
         server_manager = context_container[ServerManager]
         async with server_manager:
             await server_manager.run()
+
 
 async def async_main(loop: asyncio.AbstractEventLoop) -> None:
     """The main async entry point for the application."""
@@ -67,9 +72,10 @@ async def async_main(loop: asyncio.AbstractEventLoop) -> None:
     container = init_container(app_config=cfg, loop=loop)
 
     async with asyncio.TaskGroup() as tg:
-        server_config = get_server_config(cfg)
+        server_params = get_server_params(cfg)
         tg.create_task(
-            run_server_manager(server_config, container), name="server-manager",
+            run_server_manager(server_params, container),
+            name="server-manager",
         )
 
 

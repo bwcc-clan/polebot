@@ -5,9 +5,10 @@ import logging
 from pathlib import Path
 from typing import Any
 
-import environ
 from attrs import field, frozen, validators
 from yarl import URL
+
+from polebot.app_config import AppConfig
 
 from . import converters
 from .utils import expand_environment
@@ -46,45 +47,39 @@ class ServerCRCONDetails:
 
 
 @frozen(kw_only=True)
-class EnvironmentGroupConfig:
-    """Configuration for a group of environments."""
+class EnvironmentGroup:
+    """Represents a group of environments and their parameters."""
     weight: int = field(validator=[validators.ge(0), validators.le(100)])
     repeat_decay: float = field(validator=[validators.ge(0.0), validators.le(1.0)])
     environments: list[str] = field(factory=list)
 
 
 @frozen(kw_only=True)
-class MapGroupConfig:
-    """Configuration for a group of maps."""
+class MapGroup:
+    """Represents a group of maps and their parameters."""
     weight: int = field(validator=[validators.ge(0), validators.le(100)])
     repeat_decay: float = field(validator=[validators.ge(0.0), validators.le(1.0)])
     maps: list[str] = field(factory=list)
 
 
 @frozen(kw_only=True)
-class WeightingConfig:
-    """Configuration for map and environment weighting."""
-    groups: dict[str, MapGroupConfig]
-    environments: dict[str, EnvironmentGroupConfig]
+class WeightingParameters:
+    """Parameters for map and environment weighting."""
+    groups: dict[str, MapGroup]
+    environments: dict[str, EnvironmentGroup]
 
 
 @frozen(kw_only=True)
-class ServerConfig:
-    """Configuration for a CRCON server instance."""
+class ServerParameters:
+    """Parameters for a CRCON server instance."""
     server_name: str
     crcon_details: ServerCRCONDetails
-    weighting_config: WeightingConfig
+    weighting_params: WeightingParameters
 
 
-@environ.config(prefix="APP")
-class AppConfig:
-    """Configuration for the application."""
-    config_dir: str = environ.var(".config")
-
-
-def get_server_config(app_cfg: AppConfig) -> ServerConfig:
+def get_server_params(app_cfg: AppConfig) -> ServerParameters:
     """Get the server configuration from the configuration directory."""
-    config_converter = converters.make_config_converter()
+    params_converter = converters.make_params_converter()
     config_dir = Path(app_cfg.config_dir)
     if not config_dir.is_absolute():
         config_dir = Path(__file__).parent / config_dir
@@ -92,14 +87,14 @@ def get_server_config(app_cfg: AppConfig) -> ServerConfig:
     _logger.debug("Looking for server config files in %s", str(config_dir))
     for file in config_dir.glob("*.json"):
         _logger.debug("Loading server config file %s", str(file))
-        server_config: ServerConfig | None = None
+        server_params: ServerParameters | None = None
         try:
             contents = file.read_text()
             json_contents = json.loads(contents)
-            server_config = config_converter.structure(json_contents, ServerConfig)
+            server_params = params_converter.structure(json_contents, ServerParameters)
         except Exception as ex:  # noqa: BLE001
             _logger.warning("Unable to load file %s as a server config file", str(file), exc_info=ex)
-        if server_config:
-            return server_config
+        if server_params:
+            return server_params
 
     raise RuntimeError(f"No valid configuration files found in '{config_dir}'")
