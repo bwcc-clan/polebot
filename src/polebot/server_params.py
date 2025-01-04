@@ -47,16 +47,16 @@ class ServerCRCONDetails:
 
 
 @frozen(kw_only=True)
-class EnvironmentGroupConfig:
-    """Configuration for a group of environments."""
+class EnvironmentGroup:
+    """Represents a group of environments and their parameters."""
     weight: int = field(validator=[validators.ge(0), validators.le(100)])
     repeat_decay: float = field(validator=[validators.ge(0.0), validators.le(1.0)])
     environments: list[str] = field(factory=list)
 
 
 @frozen(kw_only=True)
-class MapGroupConfig:
-    """Configuration for a group of maps."""
+class MapGroup:
+    """Represents a group of maps and their parameters."""
     weight: int = field(validator=[validators.ge(0), validators.le(100)])
     repeat_decay: float = field(validator=[validators.ge(0.0), validators.le(1.0)])
     maps: list[str] = field(factory=list)
@@ -64,14 +64,14 @@ class MapGroupConfig:
 
 @frozen(kw_only=True)
 class WeightingParameters:
-    """Configuration for map and environment weighting."""
-    groups: dict[str, MapGroupConfig]
-    environments: dict[str, EnvironmentGroupConfig]
+    """Parameters for map and environment weighting."""
+    groups: dict[str, MapGroup]
+    environments: dict[str, EnvironmentGroup]
 
 
 @frozen(kw_only=True)
 class ServerParameters:
-    """Configuration for a CRCON server instance."""
+    """Parameters for a CRCON server instance."""
     server_name: str
     crcon_details: ServerCRCONDetails
     weighting_params: WeightingParameters

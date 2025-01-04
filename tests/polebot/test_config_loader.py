@@ -9,8 +9,8 @@ from polebot import converters
 from polebot.api_models import ApiResult, Layer
 from polebot.map_selector.data_loader import get_layer_dataframes, get_params_dataframes
 from polebot.server_params import (
-    EnvironmentGroupConfig,
-    MapGroupConfig,
+    EnvironmentGroup,
+    MapGroup,
     ServerCRCONDetails,
     ServerParameters,
     WeightingParameters,
@@ -25,20 +25,20 @@ def describe_get_params_dataframes():
             crcon_details = ServerCRCONDetails(api_url="https://hll.example.com", api_key="test_key")
             weighting_params = WeightingParameters(
                 groups={
-                    "Top": MapGroupConfig(
+                    "Top": MapGroup(
                         weight=100,
                         repeat_decay=0.8,
                         maps=["carentan", "omahabeach", "stmariedumont", "stmereeglise", "utahbeach"],
                     ),
-                    "Mid": MapGroupConfig(
+                    "Mid": MapGroup(
                         weight=80,
                         repeat_decay=0.5,
                         maps=["elsenbornridge", "foy", "hill400"],
                     ),
                 },
                 environments={
-                    "Day": EnvironmentGroupConfig(weight=100, repeat_decay=0.8, environments=["day", "dawn"]),
-                    "Night": EnvironmentGroupConfig(weight=50, repeat_decay=0.1, environments=["night"]),
+                    "Day": EnvironmentGroup(weight=100, repeat_decay=0.8, environments=["day", "dawn"]),
+                    "Night": EnvironmentGroup(weight=50, repeat_decay=0.1, environments=["night"]),
                 },
             )
             return ServerParameters(server_name="Test", crcon_details=crcon_details, weighting_params=weighting_params)
