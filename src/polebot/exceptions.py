@@ -1,6 +1,18 @@
 """This module contains custom exceptions that are used throughout the application."""
 
 
+class WebsocketConnectionError(Exception):
+    """The exception raised when a websocket connection error occurs."""
+
+    def __init__(self, message: str) -> None:
+        """Creates a new instance of `WebsocketConnectionError`.
+
+        Args:
+            message (str): Indicates the error that occurred.
+        """
+        self.message = message
+        super().__init__(self.message)
+
 class LogStreamMessageError(Exception):
     """The exception raised when the log stream returns a message indicating an error."""
 
