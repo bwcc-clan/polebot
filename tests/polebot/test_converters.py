@@ -23,7 +23,7 @@ from polebot.api_models import (
     Team,
     VoteMapUserConfig,
 )
-from polebot.config import ServerConfig
+from polebot.server_params import ServerParameters
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
 
@@ -32,7 +32,7 @@ def describe_structure():
     def describe_with_simple_result():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.make_config_converter()
+            return converters.make_params_converter()
 
         def success_result(converter: JsonConverter):
             json_content = """
@@ -200,21 +200,21 @@ def describe_structure():
             assert response.logs[2].id == "1731972329-0"
             assert response.logs[2].log.action == LogMessageType.match_start
 
-    def describe_with_server_config():
+    def describe_with_server_params():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.make_config_converter()
+            return converters.make_params_converter()
 
         @pytest.fixture
         def contents() -> Any:
-            filepath = SUPPORT_FILES_DIR.joinpath("server_config.json")
+            filepath = SUPPORT_FILES_DIR.joinpath("server_params.json")
             with filepath.open() as f:
                 contents = json.load(f)
             return contents
 
         def can_read_config(converter: JsonConverter, contents: Any):
             os.environ["SOME_ENV_VAR"] = "magic_value"
-            config = converter.structure(contents, ServerConfig)
+            config = converter.structure(contents, ServerParameters)
             assert config is not None
             assert config.server_name == "My Test Server"
             assert config.crcon_details is not None
@@ -222,11 +222,11 @@ def describe_structure():
             assert config.crcon_details.api_key == "magic_value"
             assert config.crcon_details.websocket_url.scheme == "wss"
             assert config.crcon_details.websocket_url.host == config.crcon_details.api_url.host
-            assert config.weighting_config is not None
+            assert config.weighting_params is not None
 
-            assert len(config.weighting_config.groups) == 3
-            assert "Boost" in config.weighting_config.groups
-            boost1 = config.weighting_config.groups["Boost"]
+            assert len(config.weighting_params.groups) == 3
+            assert "Boost" in config.weighting_params.groups
+            boost1 = config.weighting_params.groups["Boost"]
             assert boost1.weight == 80
             assert boost1.repeat_decay == 0.6
-            assert len(config.weighting_config.environments) == 3
+            assert len(config.weighting_params.environments) == 3

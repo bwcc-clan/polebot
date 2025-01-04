@@ -4,7 +4,7 @@
     "api_url": "https://hll.example.com",
     "api_key": "!!env:SOME_ENV_VAR"
   },
-  "weighting_config": {
+  "weighting_params": {
     "groups": {
       "Boost": {
         "weight": 80,

@@ -24,6 +24,7 @@ lagom = "^2.7.5"
 typeguard = "^4.4.1"
 cachetools = "^5.5.0"
 wrapt = "^1.17.0"
+motor = "^3.6.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "0.8.4"
@@ -60,7 +61,7 @@ describe_prefixes = [
 ]
 
 [tool.pyright]
-include = ["src"]
+include = ["src", "tests"]
 exclude = ["scripts", "docs", "out"]
 reportMissingImports = "error"
 reportOptionalMemberAccess = false

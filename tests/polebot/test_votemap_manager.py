@@ -8,7 +8,13 @@ from utils import support_files_dir
 from polebot import converters
 from polebot.api_client import CRCONApiClient
 from polebot.api_models import ApiResult, Layer, ServerStatus, VoteMapUserConfig
-from polebot.config import EnvironmentGroupConfig, MapGroupConfig, ServerConfig, ServerCRCONDetails, WeightingConfig
+from polebot.server_params import (
+    EnvironmentGroupConfig,
+    MapGroupConfig,
+    ServerCRCONDetails,
+    ServerParameters,
+    WeightingParameters,
+)
 from polebot.votemap_manager import VotemapManager
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
@@ -49,9 +55,9 @@ def queue():
 
 
 @pytest.fixture
-def standard_server_config() -> ServerConfig:
+def standard_server_params() -> ServerParameters:
     crcon_details = ServerCRCONDetails(api_url="https://hll.example.com", api_key="dummy")
-    weighting_config = WeightingConfig(
+    weighting_params = WeightingParameters(
         groups={
             "Top": MapGroupConfig(
                 weight=100,
@@ -69,7 +75,7 @@ def standard_server_config() -> ServerConfig:
             "Night": EnvironmentGroupConfig(weight=50, repeat_decay=0.1, environments=["night"]),
         },
     )
-    return ServerConfig(server_name="Test", crcon_details=crcon_details, weighting_config=weighting_config)
+    return ServerParameters(server_name="Test", crcon_details=crcon_details, weighting_params=weighting_params)
 
 
 @pytest.fixture
@@ -88,7 +94,7 @@ def standard_api_client(
 def describe_process_map_started():
     @pytest.mark.asyncio
     async def process_map_started_updates_server(
-        standard_server_config: ServerConfig, standard_status: ServerStatus, standard_layers: list[Layer],
+        standard_server_params: ServerParameters, standard_status: ServerStatus, standard_layers: list[Layer],
     ):
         # *** ARRANGE ***
         event_loop = asyncio.get_event_loop()
@@ -100,7 +106,7 @@ def describe_process_map_started():
         queue = asyncio.Queue()
         api_client = mock_api_client(standard_status, standard_layers, VoteMapUserConfig())
         api_client.set_votemap_whitelist.side_effect = set_votemap_whitelist
-        sut = VotemapManager(standard_server_config, queue, api_client, event_loop)
+        sut = VotemapManager(standard_server_params, queue, api_client, event_loop)
 
         # *** ACT ***
         await sut._process_map_started()
@@ -116,13 +122,13 @@ def describe_process_map_started():
 def describe_process_map_ended():
     @pytest.mark.asyncio
     async def process_map_ended_saves_history(
-        standard_server_config: ServerConfig, standard_status: ServerStatus, standard_layers: list[Layer],
+        standard_server_params: ServerParameters, standard_status: ServerStatus, standard_layers: list[Layer],
     ):
         # *** ARRANGE ***
         event_loop = asyncio.get_event_loop()
         queue = asyncio.Queue()
         api_client = mock_api_client(standard_status, standard_layers, VoteMapUserConfig())
-        sut = VotemapManager(standard_server_config, queue, api_client, event_loop)
+        sut = VotemapManager(standard_server_params, queue, api_client, event_loop)
         sut._layer_history.appendleft("utahbeach_warfare")
 
         # *** ACT ***

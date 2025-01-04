@@ -13,7 +13,7 @@ from polebot.api_request_context import ApiRequestContext, ApiRequestParams
 
 from . import converters
 from .api_models import ApiResult, Layer, ServerStatus, VoteMapUserConfig
-from .config import ServerConfig
+from .server_params import ServerParameters
 
 
 class CRCONApiClient(AbstractAsyncContextManager):
@@ -23,14 +23,14 @@ class CRCONApiClient(AbstractAsyncContextManager):
     interface.
     """
 
-    def __init__(self, server_config: ServerConfig, loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(self, server_params: ServerParameters, loop: asyncio.AbstractEventLoop) -> None:
         """Initialize the client.
 
         Args:
-            server_config (ServerConfig): The server configuration.
+            server_params (ServerParameters): The server configuration.
             loop (asyncio.AbstractEventLoop): The event loop to use for the client.
         """
-        self._server_config = server_config
+        self._server_params = server_params
         self._loop = loop
         self._exit_stack = AsyncExitStack()
         self._session: aiohttp.ClientSession | None = None
@@ -39,9 +39,9 @@ class CRCONApiClient(AbstractAsyncContextManager):
     async def __aenter__(self) -> Self:
         """Enter the context manager and set up the client."""
         await self._exit_stack.__aenter__()
-        headers = {"Authorization": f"BEARER {self._server_config.crcon_details.api_key}"}
-        if self._server_config.crcon_details.rcon_headers:
-            headers.update(self._server_config.crcon_details.rcon_headers)
+        headers = {"Authorization": f"BEARER {self._server_params.crcon_details.api_key}"}
+        if self._server_params.crcon_details.rcon_headers:
+            headers.update(self._server_params.crcon_details.rcon_headers)
         self._session = await self._exit_stack.enter_async_context(
             aiohttp.ClientSession(loop=self._loop, headers=headers),
         )
@@ -139,7 +139,7 @@ class CRCONApiClient(AbstractAsyncContextManager):
 
         params = ApiRequestParams(
             method=method,
-            url=self._server_config.crcon_details.api_url / endpoint,
+            url=self._server_params.crcon_details.api_url / endpoint,
             kwargs=kwargs,
         )
         return ApiRequestContext(session=self._session, params=params)
