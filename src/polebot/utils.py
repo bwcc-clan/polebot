@@ -18,6 +18,7 @@ def backoff(
     min_delay: float = BACKOFF_MIN_DELAY,
     max_delay: float = BACKOFF_MAX_DELAY,
     factor: float = BACKOFF_FACTOR,
+    max_attempts: int = 0,
 ) -> Generator[float]:
     """Generate a series of backoff delays between reconnection attempts.
 
@@ -25,15 +26,19 @@ def backoff(
         How many seconds to wait before retrying to connect.
 
     """
+    attempts = 0
     # Add a random initial delay between 0 and 5 seconds.
     # See 7.2.3. Recovering from Abnormal Closure in RFC 6455.
     yield random.random() * initial_delay  # noqa: S311 - cryptographic security not required
+    attempts += 1
     delay = min_delay
-    while delay < max_delay:
+    while delay < max_delay and (max_attempts == 0 or attempts < max_attempts):
         yield delay
+        attempts += 1
         delay *= factor
-    while True:
+    while max_attempts == 0 or attempts < max_attempts:
         yield max_delay
+        attempts += 1
 
 
 def expand_environment(value: str) -> str:

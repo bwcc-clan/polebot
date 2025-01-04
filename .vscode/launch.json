@@ -8,7 +8,8 @@
       "name": "Python Debug Polebot",
       "type": "debugpy",
       "request": "launch",
-      "module": "polebot"
+      "module": "polebot",
+      "justMyCode": false,
     },
     {
       "name": "Docker: Python - General",

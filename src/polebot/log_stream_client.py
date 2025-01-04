@@ -17,9 +17,11 @@ from websockets.asyncio.client import (
     process_exception as process_exception_standard_rules,
 )
 
+from polebot.app_config import AppConfig
+
 from . import converters
 from .api_models import LogMessageType, LogStreamObject, LogStreamResponse
-from .exceptions import LogStreamMessageError
+from .exceptions import LogStreamMessageError, WebsocketConnectionError
 from .server_params import ServerParameters
 from .utils import backoff
 
@@ -33,8 +35,10 @@ class CRCONLogStreamClient:
     Loose server. The client will connect to the CRCON server and read log messages, then forward them onto a processing
     queue.
     """
+
     def __init__(
         self,
+        app_config: AppConfig,
         server_params: ServerParameters,
         queue: asyncio.Queue[LogStreamObject],
         log_types: list[LogMessageType] | None = None,
@@ -42,11 +46,13 @@ class CRCONLogStreamClient:
         """Initialises the CRCON log stream client.
 
         Args:
+            app_config (AppConfig): The application configuration.
             server_params (ServerParameters): The server configuration.
             queue (asyncio.Queue[LogStreamObject]): The queue to which log messages should be forwarded.
             log_types (list[LogMessageType] | None, optional): The allowable log message types. Defaults to None,
             which indicates that all are allowed.
         """
+        self._app_config = app_config
         self._server_params = server_params
         self._queue = queue
         self.log_types: list[LogMessageType] | None = log_types
@@ -100,8 +106,16 @@ class CRCONLogStreamClient:
 
                     # Retry the above exceptions with a backoff delay
                     if delays is None:
-                        delays = backoff()
-                    delay = next(delays)
+                        delays = backoff(max_attempts=self._app_config.max_websocket_connection_attempts)
+
+                    try:
+                        delay = next(delays)
+                    except StopIteration:
+                        delay = None
+
+                    if delay is None:
+                        logger.info("Maximum reconnection attempts reached, stopping")
+                        raise
 
                     logger.info("Reconnecting in %.1f seconds", delay)
                     await asyncio.sleep(delay)
@@ -116,6 +130,19 @@ class CRCONLogStreamClient:
         except asyncio.CancelledError:
             logger.info("Cancellation received, stopping")
             raise
+
+        except NotImplementedError as e:
+            # A "feature" of Django channels is that, when denying a connection, it returns a Transfer-Encoding header
+            # in the response when it should not. This causes the websockets library to raise a NotImplementedError.
+            #
+            # This exception therefore indicates that the connection was denied by the server, and we should not retry.
+            # The server logs (api_1.log) will contain a message indicating the reason for the denial, such as:
+            # "API key not associated with a user, denying connection to /ws/logs" - the API key is invalid.
+            # "User x does not have permission to view /ws/logs" - the user does not have the required permissions.
+            #
+            # The user needs "Can view the get_structured_logs endpoint" permission to view the log stream.
+            logger.error("Websocket connection error, check API Key and user permissions", exc_info=e)
+            raise WebsocketConnectionError("Websocket connection refused") from None
 
     def _connect(self) -> websockets.connect:
         headers = {"Authorization": f"Bearer {self._server_params.crcon_details.api_key}"}
@@ -138,6 +165,7 @@ class CRCONLogStreamClient:
             additional_headers=headers,
             max_size=1_000_000_000,
             process_exception=process_exception,
+            open_timeout=600,
         )
         return ws
 
