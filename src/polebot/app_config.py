@@ -13,6 +13,8 @@ class AppConfig:
         0, help="The maximum number of attempts to connect to a websocket.",
     )
 
+    discord_token: str = environ.var(help="The token for the Discord bot.")
+
     @environ.config
     class MongoConfig:
         """Configuration for the MongoDB connection."""

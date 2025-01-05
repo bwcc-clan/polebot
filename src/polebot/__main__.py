@@ -11,6 +11,8 @@ import uvloop
 from dotenv import load_dotenv
 from lagom import Container
 
+from polebot.discord.bot import make_bot
+
 from .app_config import AppConfig
 from .composition_root import (
     begin_server_context,
@@ -64,6 +66,9 @@ async def run_server_manager(
         async with server_manager:
             await server_manager.run()
 
+async def run_polebot(container: Container, app_config: AppConfig) -> None:
+    bot = make_bot(container)
+    await bot.start(app_config.discord_token)
 
 async def async_main(loop: asyncio.AbstractEventLoop) -> None:
     """The main async entry point for the application."""
@@ -72,6 +77,7 @@ async def async_main(loop: asyncio.AbstractEventLoop) -> None:
     container = init_container(app_config=cfg, loop=loop)
 
     async with asyncio.TaskGroup() as tg:
+        tg.create_task(run_polebot(container, cfg), name="polebot")
         server_params = get_server_params(cfg)
         tg.create_task(
             run_server_manager(server_params, container),

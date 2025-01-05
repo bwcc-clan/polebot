@@ -14,6 +14,8 @@ from lagom import (
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from typeguard import TypeCheckError, check_type
 
+from polebot.server_params import ServerCRCONDetails
+
 from .api_client import CRCONApiClient
 from .api_models import LogStreamObject
 from .app_config import AppConfig
@@ -116,17 +118,17 @@ def begin_server_context(
         ],
     )
     context_container[ServerParameters] = server_params
+    context_container[ServerCRCONDetails] = server_params.crcon_details
     if stop_event:
         context_container[asyncio.Event] = stop_event
     context_container[asyncio.Queue[LogStreamObject]] = asyncio.Queue[LogStreamObject](_QUEUE_SIZE)
     return context_container
 
 
-# def create_server_manager(
-#     container: Container,
-#     server_params: ServerParameters,
-#     stop_event: asyncio.Event | None = None,
-# ) -> ServerManager:
-#     factory = container.magic_partial(ServerManager)
-#     server_manager = factory(server_params, stop_event=stop_event)
-#     return server_manager
+def create_api_client(
+    container: Container,
+    crcon_details: ServerCRCONDetails,
+) -> CRCONApiClient:
+    factory = container.magic_partial(CRCONApiClient)
+    api_client = factory(crcon_details)
+    return api_client

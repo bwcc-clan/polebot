@@ -1,5 +1,21 @@
 """This module contains custom exceptions that are used throughout the application."""
 
+class CRCONApiClientError(Exception):
+    """The exception raised when the CRCONApiClient error occurs."""
+    def __init__(self, message: str, command: str, error: str, version: str) -> None:
+        """Creates a new instance of `CRCONApiClientError`.
+
+        Args:
+            message (str): Indicates the error that occurred.
+            command (str): Indicates the command that failed.
+            error (str): Indicates the error response from the API.
+            version (str): The API version number.
+        """
+        self.message = message
+        self.command = command
+        self.error = error
+        self.version = version
+        super().__init__(self.message)
 
 class WebsocketConnectionError(Exception):
     """The exception raised when a websocket connection error occurs."""

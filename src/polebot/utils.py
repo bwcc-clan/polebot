@@ -87,5 +87,5 @@ def is_async_callable(obj: Any) -> bool:
     while isinstance(obj, functools.partial):
         obj = obj.func
 
-    return asyncio.iscoroutinefunction(obj) or (callable(obj) and asyncio.iscoroutinefunction(obj.__call__))    # type: ignore[reportFunctionMemberAccess,unused-ignore]
+    return asyncio.iscoroutinefunction(obj) or (callable(obj) and asyncio.iscoroutinefunction(obj.__call__))  # type: ignore[reportFunctionMemberAccess,unused-ignore]
 

@@ -25,6 +25,7 @@ typeguard = "^4.4.1"
 cachetools = "^5.5.0"
 wrapt = "^1.17.0"
 motor = "^3.6.0"
+discord-py = "^2.4.0"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "0.8.4"
@@ -155,7 +156,7 @@ select = [
     # flake8-use-pathlib
     "PTH",
     ]
-ignore = []   # This is the line that upsets the schema validation
+ignore = ["D1"]
 
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
