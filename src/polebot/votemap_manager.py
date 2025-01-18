@@ -21,7 +21,7 @@ from .api_models import (
 )
 from .cache_utils import CacheItem, cache_item_ttu, ttl_cached
 from .map_selector import MapSelector
-from .server_params import ServerParameters
+from .models import ServerParameters
 
 logger = logging.getLogger(__name__)
 

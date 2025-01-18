@@ -19,7 +19,7 @@ class AppConfig:
     class MongoConfig:
         """Configuration for the MongoDB connection."""
 
-        connection_string: str = environ.var("mongodb://localhost:27017/", help="The connection string for MongoDB.")
-        db_name: str = environ.var("polebot", help="The name of the database to use in MongoDB.")
+        connection_string: str = environ.var(help="The connection string for MongoDB.")
+        db_name: str = environ.var("The name of the database to use in MongoDB.")
 
     mongodb: MongoConfig = environ.group(MongoConfig)

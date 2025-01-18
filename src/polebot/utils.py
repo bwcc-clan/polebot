@@ -6,6 +6,7 @@ import os
 import random
 from collections.abc import Awaitable, Callable, Generator
 from typing import Any, TypeGuard, TypeVar, overload
+from urllib.parse import urlparse
 
 BACKOFF_INITIAL_DELAY = float(os.environ.get("LOGSTREAM_BACKOFF_INITIAL_DELAY", "5"))
 BACKOFF_MIN_DELAY = float(os.environ.get("LOGSTREAM_BACKOFF_MIN_DELAY", "3.1"))
@@ -89,3 +90,6 @@ def is_async_callable(obj: Any) -> bool:
 
     return asyncio.iscoroutinefunction(obj) or (callable(obj) and asyncio.iscoroutinefunction(obj.__call__))  # type: ignore[reportFunctionMemberAccess,unused-ignore]
 
+
+def is_absolute(url: str) -> bool:
+    return bool(urlparse(url).netloc)

@@ -1,9 +1,13 @@
+import datetime as dt
 import json
 import os
 from types import NoneType
 from typing import Any
 
 import pytest
+from bson import ObjectId
+from cattr import Converter
+from cattrs.preconf.bson import BsonConverter
 from cattrs.preconf.json import JsonConverter
 from utils import support_files_dir
 from yarl import URL
@@ -23,7 +27,7 @@ from polebot.api_models import (
     Team,
     VoteMapUserConfig,
 )
-from polebot.server_params import ServerParameters
+from polebot.models import GuildServer, ServerCRCONDetails, ServerParameters
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
 
@@ -200,11 +204,12 @@ def describe_structure():
             assert response.logs[2].id == "1731972329-0"
             assert response.logs[2].log.action == LogMessageType.match_start
 
-    def describe_with_server_params():
-        @pytest.fixture
-        def converter() -> JsonConverter:
-            return converters.make_params_converter()
+def describe_params_converter():
+    @pytest.fixture
+    def converter() -> JsonConverter:
+        return converters.make_params_converter()
 
+    def describe_with_server_params():
         @pytest.fixture
         def contents() -> Any:
             filepath = SUPPORT_FILES_DIR.joinpath("server_params.json")
@@ -230,3 +235,45 @@ def describe_structure():
             assert boost1.weight == 80
             assert boost1.repeat_decay == 0.6
             assert len(config.weighting_params.environments) == 3
+
+def describe_db_converter():
+    @pytest.fixture
+    def converter() -> BsonConverter:
+        return converters.make_db_converter()
+
+    def describe_with_guild_server():
+
+        def can_unstructure(converter: Converter):
+            # ***** ARRANGE *****
+            guild_server = GuildServer(
+                guild_id=12345,
+                server_name="server_name",
+                crcon_details=ServerCRCONDetails("https://server.example.com", "some key"),
+                created_date_utc=dt.datetime.now(dt.UTC),
+            )
+
+            # ***** ACT *****
+            result = converter.unstructure(guild_server)
+
+            # ***** ASSERT *****
+            assert result["guild_id"] == 12345
+            assert isinstance(result["_id"], ObjectId)
+            assert result["crcon_details"]["api_url"] == "https://server.example.com"
+
+        def can_structure(converter: Converter):
+            # ***** ARRANGE *****
+            db_rec = {
+                "_id": ObjectId(b"foo-bar-quux"),
+                "guild_id": 12345,
+                "server_name": "server_name",
+                "crcon_details": {"api_url": "https://server.example.com", "api_key": "some key"},
+            }
+
+            # ***** ACT *****
+            result = converter.structure(db_rec, GuildServer)
+
+            # ***** ASSERT *****
+            assert result.guild_id == 12345
+            assert result.id == ObjectId(b"foo-bar-quux")
+            assert result.server_name == "server_name"
+            assert result.crcon_details.api_url == URL("https://server.example.com")

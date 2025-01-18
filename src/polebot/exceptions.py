@@ -1,7 +1,9 @@
 """This module contains custom exceptions that are used throughout the application."""
 
+
 class CRCONApiClientError(Exception):
     """The exception raised when the CRCONApiClient error occurs."""
+
     def __init__(self, message: str, command: str, error: str, version: str) -> None:
         """Creates a new instance of `CRCONApiClientError`.
 
@@ -17,6 +19,7 @@ class CRCONApiClientError(Exception):
         self.version = version
         super().__init__(self.message)
 
+
 class WebsocketConnectionError(Exception):
     """The exception raised when a websocket connection error occurs."""
 
@@ -29,6 +32,7 @@ class WebsocketConnectionError(Exception):
         self.message = message
         super().__init__(self.message)
 
+
 class LogStreamMessageError(Exception):
     """The exception raised when the log stream returns a message indicating an error."""
 
@@ -37,6 +41,19 @@ class LogStreamMessageError(Exception):
 
         Args:
             message (str): The error message that was returned from the CRCON server in the response.
+        """
+        self.message = message
+        super().__init__(self.message)
+
+
+class DatastoreError(Exception):
+    """The exception raised when an error occurs when accessing the data store."""
+
+    def __init__(self, message: str) -> None:
+        """Creates a new instance of `DatastoreError`.
+
+        Args:
+            message (str): Indicates the error that occurred.
         """
         self.message = message
         super().__init__(self.message)

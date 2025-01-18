@@ -1,11 +1,13 @@
 """Configuration classes for the application."""
 
+import datetime as dt
 import json
 import logging
 from pathlib import Path
 from typing import Any
 
-from attrs import field, frozen, validators
+from attrs import define, field, frozen, validators
+from bson import ObjectId
 from yarl import URL
 
 from polebot.app_config import AppConfig
@@ -98,3 +100,16 @@ def get_server_params(app_cfg: AppConfig) -> ServerParameters:
             return server_params
 
     raise RuntimeError(f"No valid configuration files found in '{config_dir}'")
+
+
+@define(kw_only=True)
+class GuildServer:
+    _id: ObjectId = field(factory=ObjectId)
+    guild_id: int
+    server_name: str
+    crcon_details: ServerCRCONDetails
+    created_date_utc: dt.datetime
+
+    @property
+    def id(self) -> ObjectId:
+        return self._id

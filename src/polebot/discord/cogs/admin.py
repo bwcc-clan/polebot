@@ -60,7 +60,7 @@ class Admin(commands.Cog, name="admin"):
     @commands.is_owner()
     async def reload_all_cogs(self, ctx: commands.Context) -> None:
         """Reload all cogs."""
-        cogs = [cog for cog in self.bot.extensions]
+        cogs = list(self.bot.extensions)
         for cog in cogs:
             await self.bot.reload_cog(cog)
 

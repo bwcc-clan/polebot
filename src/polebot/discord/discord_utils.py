@@ -1,13 +1,11 @@
-import datetime as dt
-import traceback
-from collections.abc import Callable, Coroutine
+import inspect
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 import discord
 from discord import ButtonStyle, Emoji, Interaction, PartialEmoji, SelectOption, app_commands, ui
 from discord.ext import commands
 from discord.utils import MISSING
-from discord.utils import escape_markdown as esc_md
 from typing_extensions import TypeVar
 
 from ..cache_utils import ttl_cache
@@ -109,93 +107,17 @@ def get_question_embed(title: str, description: str | None = None) -> discord.Em
     return embed
 
 
-class ExpiredButtonError(Exception):
-    """Raised when pressing a button that has already expired."""
-
-
-class CustomException(Exception):
-    """Raised to log a custom exception."""
-
-    def __init__(self, error: Any, *args: Any) -> None:  # noqa: ANN401
-        self.error = error
-        super().__init__(*args)
-
-
-async def handle_error(interaction: Interaction | commands.Context, error: Exception) -> None:
-    if isinstance(error, app_commands.CommandInvokeError | commands.CommandInvokeError):
-        error = error.original
-
-    if isinstance(error, app_commands.CommandNotFound | commands.CommandNotFound):
-        embed = get_error_embed(title="Unknown command!")
-
-    elif type(error).__name__ == CustomException.__name__:
-        embed = get_error_embed(title=str(error), description=str(error))
-
-    elif isinstance(error, ExpiredButtonError):
-        embed = get_error_embed(title="This action no longer is available.")
-    elif isinstance(error, app_commands.CommandOnCooldown | commands.CommandOnCooldown):
-        sec = dt.timedelta(seconds=int(error.retry_after))
-        d = dt.datetime(1, 1, 1, tzinfo=dt.UTC) + sec
-        output = f"{d.hour}h{d.minute}m{d.second}s"
-        if output.startswith("0h"):
-            output = output.replace("0h", "")
-        if output.startswith("0m"):
-            output = output.replace("0m", "")
-        embed = get_error_embed(
-            title="That command is still on cooldown!",
-            description="Cooldown expires in " + output + ".",
-        )
-    elif isinstance(error, app_commands.MissingPermissions | commands.MissingPermissions):
-        embed = get_error_embed(title="Missing required permissions to use that command!", description=str(error))
-    elif isinstance(error, app_commands.BotMissingPermissions | commands.BotMissingPermissions):
-        embed = get_error_embed(title="I am missing required permissions to use that command!", description=str(error))
-    elif isinstance(error, app_commands.CheckFailure | commands.CheckFailure):
-        embed = get_error_embed(title="Couldn't run that command!", description=None)
-    elif isinstance(error, commands.MissingRequiredArgument):
-        embed = get_error_embed(title="Missing required argument(s)!")
-        embed.description = str(error)
-    elif isinstance(error, commands.MaxConcurrencyReached):
-        embed = get_error_embed(title="You can't do that right now!")
-        embed.description = str(error)
-    elif isinstance(error, commands.BadArgument):
-        embed = get_error_embed(title="Invalid argument!", description=esc_md(str(error)))
-    else:
-        embed = get_error_embed(title="An unexpected error occured!", description=esc_md(str(error)))
-        try:
-            raise error
-        except:
-            traceback.print_exc()
-
-    if isinstance(interaction, Interaction):
-        if interaction.response.is_done() or interaction.is_expired():
-            await interaction.followup.send(embed=embed, ephemeral=True)
+def to_discord_markdown(markdown: str) -> str:
+    lines = inspect.cleandoc(markdown).splitlines()
+    discord_markdown = ""
+    for idx, line in enumerate(lines):
+        if len(line):
+            discord_markdown += line
+            if idx != len(lines) - 1:
+                discord_markdown += " "
         else:
-            await interaction.response.send_message(embed=embed, ephemeral=True)
-    else:
-        await interaction.send(embed=embed)
-
-
-class View(ui.View):
-    async def on_error(self, interaction: Interaction, error: Exception, item: ui.Item[Any], /) -> None:
-        await handle_error(interaction, error)
-
-
-class Modal(ui.Modal):
-    async def on_error(self, interaction: Interaction, error: Exception, /) -> None:  # type: ignore[override]
-        await handle_error(interaction, error)
-
-
-def only_once(func: Callable[..., Coroutine[Any, Any, Any]]) -> Callable[..., Coroutine[Any, Any, Any]]:
-    func.__has_been_ran_once = False  # type: ignore
-
-    async def decorated(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
-        if func.__has_been_ran_once:  # type: ignore
-            raise ExpiredButtonError
-        res = await func(*args, **kwargs)
-        func.__has_been_ran_once = True  # type: ignore
-        return res
-
-    return decorated
+            discord_markdown += "\n"
+    return discord_markdown
 
 
 @ttl_cache(size=100, seconds=60 * 60 * 24)
@@ -226,7 +148,7 @@ def bot_has_permissions(**perms: bool) -> Callable[..., MyCommand]:
     ) -> MyCommand:
         if not isinstance(command, MyCommand):
             raise TypeError(
-                f"Cannot decorate a class that is not a subclass of Command, get: {type(command)} must be Command"
+                f"Cannot decorate a class that is not a subclass of Command, get: {type(command)} must be Command",
             )
 
         valid_required_permissions = [

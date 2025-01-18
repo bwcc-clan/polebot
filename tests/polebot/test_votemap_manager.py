@@ -8,7 +8,7 @@ from utils import support_files_dir
 from polebot import converters
 from polebot.api_client import CRCONApiClient
 from polebot.api_models import ApiResult, Layer, ServerStatus, VoteMapUserConfig
-from polebot.server_params import (
+from polebot.models import (
     EnvironmentGroup,
     MapGroup,
     ServerCRCONDetails,

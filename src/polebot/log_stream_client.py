@@ -22,7 +22,7 @@ from polebot.app_config import AppConfig
 from . import converters
 from .api_models import LogMessageType, LogStreamObject, LogStreamResponse
 from .exceptions import LogStreamMessageError, WebsocketConnectionError
-from .server_params import ServerParameters
+from .models import ServerParameters
 from .utils import backoff
 
 logger = logging.getLogger(__name__)

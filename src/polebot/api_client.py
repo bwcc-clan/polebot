@@ -13,7 +13,7 @@ from . import converters
 from .api_models import ApiResult, Layer, ServerStatus, VoteMapUserConfig
 from .api_request_context import ApiRequestContext, ApiRequestParams
 from .exceptions import CRCONApiClientError
-from .server_params import ServerCRCONDetails
+from .models import ServerCRCONDetails
 
 
 class CRCONApiClient(AbstractAsyncContextManager):

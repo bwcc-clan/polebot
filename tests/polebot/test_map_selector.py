@@ -13,7 +13,7 @@ from polebot.api_models import (
     VoteMapUserConfig,
 )
 from polebot.map_selector.selector import _SKIRMISH_MODES, MapSelector
-from polebot.server_params import (
+from polebot.models import (
     EnvironmentGroup,
     MapGroup,
     ServerCRCONDetails,

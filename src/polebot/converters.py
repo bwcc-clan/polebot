@@ -2,7 +2,10 @@
 
 from typing import Any
 
+from cattrs.preconf.bson import BsonConverter
+from cattrs.preconf.bson import make_converter as make_bson_converter
 from cattrs.preconf.json import JsonConverter, make_converter
+from yarl import URL
 
 
 def make_rcon_converter() -> JsonConverter:
@@ -34,3 +37,14 @@ def make_params_converter() -> JsonConverter:
     """
     config_converter = make_converter()
     return config_converter
+
+
+def make_db_converter() -> BsonConverter:
+    """Creates a BSON converter for MongoDb database.
+
+    Returns:
+        BsonConverter: The BSON converter.
+    """
+    converter = make_bson_converter()
+    converter.register_unstructure_hook(URL, lambda u: str(u))
+    return converter

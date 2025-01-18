@@ -8,7 +8,7 @@ from utils import support_files_dir
 from polebot import converters
 from polebot.api_models import ApiResult, Layer
 from polebot.map_selector.data_loader import get_layer_dataframes, get_params_dataframes
-from polebot.server_params import (
+from polebot.models import (
     EnvironmentGroup,
     MapGroup,
     ServerCRCONDetails,

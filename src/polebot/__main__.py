@@ -19,8 +19,8 @@ from .composition_root import (
     init_container,
 )
 from .logging_utils import configure_logger
+from .models import ServerParameters, get_server_params
 from .server_manager import ServerManager
-from .server_params import ServerParameters, get_server_params
 
 log_level = os.getenv("LOG_LEVELS", ":INFO")
 log_location = os.getenv("LOG_LOCATION", "./logs")

@@ -5,7 +5,7 @@ import pytest_asyncio
 from aioresponses import aioresponses
 
 from polebot.api_client import CRCONApiClient
-from polebot.server_params import ServerCRCONDetails
+from polebot.models import ServerCRCONDetails
 
 
 def describe_when_not_entered():

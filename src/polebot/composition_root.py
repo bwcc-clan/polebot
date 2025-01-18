@@ -14,15 +14,16 @@ from lagom import (
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from typeguard import TypeCheckError, check_type
 
-from polebot.server_params import ServerCRCONDetails
+from polebot.models import ServerCRCONDetails
+from polebot.polebot_database import PolebotDatabase
 
 from .api_client import CRCONApiClient
 from .api_models import LogStreamObject
 from .app_config import AppConfig
 from .log_stream_client import CRCONLogStreamClient
 from .map_selector.selector import MapSelector
+from .models import ServerParameters
 from .server_manager import ServerManager
-from .server_params import ServerParameters
 from .votemap_manager import VotemapManager
 
 X = TypeVar("X")
@@ -49,7 +50,7 @@ def define_context_dependency(ctr: Container, dep_type: type[X]) -> None:
             yield instance
 
 
-container = Container()
+_container = Container()
 
 _container_initialized = False
 
@@ -67,24 +68,27 @@ def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop) -> Co
     global _container_initialized
 
     if _container_initialized:
-        return container
+        return _container
 
-    container[AppConfig] = app_config
-    container[AsyncIOMotorClient] = AsyncIOMotorClient(app_config.mongodb.connection_string, tz_aware=True)
-    container[AsyncIOMotorDatabase] = container[AsyncIOMotorClient][app_config.mongodb.db_name]
+    _container[AppConfig] = app_config
+    mongo_client: AsyncIOMotorClient = AsyncIOMotorClient(app_config.mongodb.connection_string, tz_aware=True)
+    mongo_db: AsyncIOMotorDatabase = mongo_client[app_config.mongodb.db_name]
+    _container[AsyncIOMotorClient] = mongo_client
+    _container[AsyncIOMotorDatabase] = mongo_db
+    _container[PolebotDatabase] = PolebotDatabase(app_config, mongo_db)
 
-    @dependency_definition(container, singleton=True)
+    @dependency_definition(_container, singleton=True)
     def _get_event_loop() -> asyncio.AbstractEventLoop:
         return loop
 
-    define_context_dependency(container, ServerManager)
-    define_context_dependency(container, CRCONLogStreamClient)
-    define_context_dependency(container, VotemapManager)
-    define_context_dependency(container, MapSelector)
-    define_context_dependency(container, CRCONApiClient)
+    define_context_dependency(_container, ServerManager)
+    define_context_dependency(_container, CRCONLogStreamClient)
+    define_context_dependency(_container, VotemapManager)
+    define_context_dependency(_container, MapSelector)
+    define_context_dependency(_container, CRCONApiClient)
 
     _container_initialized = True
-    return container
+    return _container
 
 
 _QUEUE_SIZE = 1000

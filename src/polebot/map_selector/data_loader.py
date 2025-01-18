@@ -5,7 +5,7 @@ from attrs import define
 
 from .. import converters
 from ..api_models import Layer
-from ..server_params import ServerParameters
+from ..models import ServerParameters
 
 
 @define(kw_only=True)

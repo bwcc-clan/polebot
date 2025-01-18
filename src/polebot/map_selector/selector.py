@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from ..api_models import GameMode, Layer, ServerStatus, VoteMapUserConfig
-from ..server_params import ServerParameters
+from ..models import ServerParameters
 from .data_loader import get_layer_dataframes, get_params_dataframes
 
 _logger = logging.getLogger(__name__)

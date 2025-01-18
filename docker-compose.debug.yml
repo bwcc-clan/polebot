@@ -8,13 +8,15 @@ services:
       target: debug
     command: ["sh", "-c", "python /tmp/debugpy --wait-for-client --listen 0.0.0.0:5678 -m polebot "]
     ports:
-      - 5678:5678
+    - 5678:5678
     environment:
-      - RCON_API_KEY=${RCON_API_KEY}
-      - PYDEVD_DISABLE_FILE_VALIDATION=1
-      - LOG_LOCATION=/var/log/polebot
-      - APP_DISCORD_TOKEN=${APP_DISCORD_TOKEN}
-      - LOG_LEVELS=${LOG_LEVELS:-:DEBUG}
+    - RCON_API_KEY=${RCON_API_KEY}
+    - PYDEVD_DISABLE_FILE_VALIDATION=1
+    - LOG_LOCATION=/var/log/polebot
+    - APP_MONGODB_CONNECTION_STRING=${APP_MONGODB_CONNECTION_STRING}
+    - APP_MONGODB_DB_NAME=${APP_MONGODB_DB_NAME}
+    - APP_DISCORD_TOKEN=${APP_DISCORD_TOKEN}
+    - LOG_LEVELS=${LOG_LEVELS:-:DEBUG}
     networks:
     - crcon-net
     - backend-net
@@ -26,8 +28,8 @@ services:
     image: mongo:7-jammy
     restart: unless-stopped
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_ROOT_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_ROOT_PASSWORD}
+    - MONGO_INITDB_ROOT_USERNAME=${MONGODB_ROOT_USERNAME}
+    - MONGO_INITDB_ROOT_PASSWORD=${MONGODB_ROOT_PASSWORD}
     networks:
     - backend-net
     volumes:
@@ -37,9 +39,11 @@ services:
     image: mongo-express
     restart: unless-stopped
     environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGODB_ROOT_USERNAME}
-      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGODB_ROOT_PASSWORD}
-      ME_CONFIG_MONGODB_URL: mongodb://${MONGODB_ROOT_USERNAME}:${MONGODB_ROOT_PASSWORD}@mongo:27017/
+    - ME_CONFIG_MONGODB_ADMINUSERNAME=${MONGODB_ROOT_USERNAME}
+    - ME_CONFIG_MONGODB_ADMINPASSWORD=${MONGODB_ROOT_PASSWORD}
+    - ME_CONFIG_MONGODB_URL=mongodb://${MONGODB_ROOT_USERNAME}:${MONGODB_ROOT_PASSWORD}@mongo:27017/
+    ports:
+      - 8081:8081
     networks:
     - crcon-net
     - backend-net

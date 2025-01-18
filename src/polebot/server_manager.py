@@ -12,7 +12,7 @@ from typing import NoReturn, Self
 from .api_models import LogMessageType, LogStreamObject
 from .exceptions import TerminateTaskGroup
 from .log_stream_client import CRCONLogStreamClient
-from .server_params import ServerParameters
+from .models import ServerParameters
 from .votemap_manager import VotemapManager
 
 logger = logging.getLogger(__name__)
