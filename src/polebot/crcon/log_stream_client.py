@@ -19,11 +19,11 @@ from websockets.asyncio.client import (
 
 from polebot.app_config import AppConfig
 
-from . import converters
+from ..exceptions import LogStreamMessageError, WebsocketConnectionError
+from ..models import ServerParameters
+from ..services import converters
+from ..utils import backoff
 from .api_models import LogMessageType, LogStreamObject, LogStreamResponse
-from .exceptions import LogStreamMessageError, WebsocketConnectionError
-from .models import ServerParameters
-from .utils import backoff
 
 logger = logging.getLogger(__name__)
 

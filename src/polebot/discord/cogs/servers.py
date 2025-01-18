@@ -1,3 +1,4 @@
+
 import datetime as dt
 import logging
 
@@ -13,7 +14,7 @@ from discord.ext import commands
 from ...composition_root import create_api_client
 from ...exceptions import CRCONApiClientError, DatastoreError
 from ...models import GuildServer, ServerCRCONDetails
-from ...polebot_database import PolebotDatabase
+from ...services.polebot_database import PolebotDatabase
 from ...utils import is_absolute
 from ..discord_bot import DiscordBot
 from ..discord_utils import get_command_mention, get_error_embed, get_success_embed, to_discord_markdown
@@ -21,6 +22,7 @@ from ..discord_utils import get_command_mention, get_error_embed, get_success_em
 
 @define
 class ServerProps:
+    label: str
     api_url: str
     api_key: str
 
@@ -33,8 +35,19 @@ class ModalResult:
 
 
 class AddServerModal(discord.ui.Modal, title="Add CRCON Server"):
-    url: discord.ui.TextInput = discord.ui.TextInput(label="Server URL", placeholder="https://my.crcon.server")
-    api_key: discord.ui.TextInput = discord.ui.TextInput(label="API Key", placeholder="<Your CRCON API Key>")
+    label: discord.ui.TextInput = discord.ui.TextInput(
+        label="Label", placeholder="s1", min_length=1, max_length=10, required=True, row=0,
+    )
+    url: discord.ui.TextInput = discord.ui.TextInput(
+        label="Server URL", placeholder="https://my.crcon.server", min_length=1, max_length=254, row=1,
+    )
+    api_key: discord.ui.TextInput = discord.ui.TextInput(
+        label="API Key",
+        placeholder="<Your CRCON API Key>",
+        min_length=5,
+        max_length=50,
+        row=1,
+    )
 
     def __init__(
         self,
@@ -50,17 +63,23 @@ class AddServerModal(discord.ui.Modal, title="Add CRCON Server"):
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
-        if is_absolute(self.url.value):
-            server_props = ServerProps(api_url=self.url.value, api_key=self.api_key.value)
-            self.result = ModalResult(success=True, server_props=server_props)
+        validate_result = self.validate()
+        if isinstance(validate_result, ServerProps):
+            self.result = ModalResult(success=True, server_props=validate_result)
         else:
-            self.result = ModalResult(False, error="Invalid value for Server URL - must be a valid URL")
+            self.result = ModalResult(False, error=validate_result)
         self.stop()
 
     async def on_error(self, interaction: Interaction, error: Exception) -> None:  # type: ignore
         self.logger.error("Modal error", exc_info=error)
-        await interaction.response.send_message("Oops! Something went wrong.", ephemeral=True)
+        embed = get_error_embed(title="Oops! Something went wrong", description="Sorry, something bad happened :,(")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
         self.stop()
+
+    def validate(self) -> str | ServerProps:
+        if not is_absolute(self.url.value):
+            return "Invalid value for Server URL - must be a valid URL"
+        return ServerProps(label=self.label.value, api_url=self.url.value, api_key=self.api_key.value)
 
 
 @app_commands.guild_only()
@@ -82,7 +101,7 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
             if len(guild_servers):
                 content = ""
                 for idx, server in enumerate(guild_servers):
-                    content += f"{idx}. {discord.utils.escape_markdown(server.server_name)}\n"
+                    content += f"{idx}. {discord.utils.escape_markdown(server.name)}\n"
                 embed = get_success_embed(title="CRCON Servers", description=content)
             else:
                 content = to_discord_markdown(
@@ -131,7 +150,8 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
         server_name = result[1]
         guild_server = GuildServer(
             guild_id=interaction.guild_id,
-            server_name=server_name,
+            label=modal.result.server_props.label,
+            name=server_name,
             crcon_details=crcon_details,
             created_date_utc=dt.datetime.now(dt.UTC),
         )
@@ -154,9 +174,9 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
         await interaction.response.defer()
         guild_servers = await self.db.list_guild_servers(interaction.guild_id)
         choices = [
-            app_commands.Choice(name=server.server_name, value=str(server.id))
+            app_commands.Choice(name=server.name, value=str(server.id))
             for server in guild_servers
-            if current.lower() in server.server_name.lower() and server.id
+            if current.lower() in server.name.lower() and server.id
         ]
         return choices
 
@@ -183,7 +203,7 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
             if guild_server:
                 await self.db.delete_guild_server(server_id)
                 self.bot.logger.info("Server %s deleted", server)
-                content = f"Server {guild_server.server_name} was removed."
+                content = f"Server {guild_server.name} was removed."
                 embed = get_success_embed(title="Server removed", description=to_discord_markdown(content))
                 await interaction.followup.send(embed=embed)
             else:

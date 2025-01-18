@@ -7,7 +7,7 @@ from itertools import chain
 import numpy as np
 import pandas as pd
 
-from ..api_models import GameMode, Layer, ServerStatus, VoteMapUserConfig
+from ..crcon.api_models import GameMode, Layer, ServerStatus, VoteMapUserConfig
 from ..models import ServerParameters
 from .data_loader import get_layer_dataframes, get_params_dataframes
 

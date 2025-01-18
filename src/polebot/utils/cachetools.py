@@ -9,7 +9,7 @@ import cachetools
 import cachetools.keys
 import wrapt
 
-from .utils import is_async_callable
+from . import is_async_callable
 
 # Wrapt is untyped, plus it's highly verbose to type decorators etc so we ignore for now
 # mypy: ignore-errors

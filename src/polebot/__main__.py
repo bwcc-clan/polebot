@@ -11,16 +11,15 @@ import uvloop
 from dotenv import load_dotenv
 from lagom import Container
 
-from polebot.discord.bot import make_bot
-
 from .app_config import AppConfig
 from .composition_root import (
     begin_server_context,
     init_container,
 )
-from .logging_utils import configure_logger
+from .discord.bot import make_bot
 from .models import ServerParameters, get_server_params
-from .server_manager import ServerManager
+from .services.server_manager import ServerManager
+from .utils.logging import configure_logger
 
 log_level = os.getenv("LOG_LEVELS", ":INFO")
 log_location = os.getenv("LOG_LOCATION", "./logs")

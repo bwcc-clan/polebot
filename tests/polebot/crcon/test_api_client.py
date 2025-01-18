@@ -4,7 +4,7 @@ import pytest
 import pytest_asyncio
 from aioresponses import aioresponses
 
-from polebot.api_client import CRCONApiClient
+from polebot.crcon.api_client import CRCONApiClient
 from polebot.models import ServerCRCONDetails
 
 

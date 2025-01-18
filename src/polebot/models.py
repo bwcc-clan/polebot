@@ -12,8 +12,9 @@ from yarl import URL
 
 from polebot.app_config import AppConfig
 
-from . import converters
+from .services import converters
 from .utils import expand_environment
+from .utils import validators as utils_validators
 
 _logger = logging.getLogger(__name__)
 
@@ -106,9 +107,10 @@ def get_server_params(app_cfg: AppConfig) -> ServerParameters:
 class GuildServer:
     _id: ObjectId = field(factory=ObjectId)
     guild_id: int
-    server_name: str
+    label: str = field(validator=[validators.min_len(1), validators.max_len(10)])
+    name: str = field(validator=[validators.min_len(1), validators.max_len(100)])
     crcon_details: ServerCRCONDetails
-    created_date_utc: dt.datetime
+    created_date_utc: dt.datetime = field(validator=[utils_validators.is_utc()])
 
     @property
     def id(self) -> ObjectId:

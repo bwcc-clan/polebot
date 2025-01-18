@@ -4,7 +4,8 @@ from typing import Any
 
 from cattrs.preconf.bson import BsonConverter
 from cattrs.preconf.bson import make_converter as make_bson_converter
-from cattrs.preconf.json import JsonConverter, make_converter
+from cattrs.preconf.json import JsonConverter
+from cattrs.preconf.json import make_converter as make_json_converter
 from yarl import URL
 
 
@@ -15,7 +16,7 @@ def make_rcon_converter() -> JsonConverter:
         JsonConverter: The JSON converter.
     """
     from types import NoneType
-    rcon_converter = make_converter()
+    rcon_converter = make_json_converter()
 
     @rcon_converter.register_structure_hook
     def _json_null_hook(val: Any, _: Any) -> NoneType:  # type: ignore[valid-type]  # noqa: ANN401
@@ -30,12 +31,12 @@ def make_rcon_converter() -> JsonConverter:
 
 
 def make_params_converter() -> JsonConverter:
-    """Creates a JSON converter for server parameters.
+    """Creates a converter for server parameters.
 
     Returns:
         JsonConverter: The JSON converter.
     """
-    config_converter = make_converter()
+    config_converter = make_json_converter()
     return config_converter
 
 

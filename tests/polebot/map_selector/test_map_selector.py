@@ -2,10 +2,10 @@ import json
 from collections import deque
 
 import pytest
-from utils import support_files_dir
+from testutils import support_files_dir
 
-import polebot.converters as converters
-from polebot.api_models import (
+import polebot.services.converters as converters
+from polebot.crcon.api_models import (
     ApiResult,
     GameMode,
     Layer,

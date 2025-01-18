@@ -9,11 +9,11 @@ from typing import Self, Unpack
 import aiohttp
 import aiohttp.typedefs
 
-from . import converters
+from ..exceptions import CRCONApiClientError
+from ..models import ServerCRCONDetails
+from ..services import converters
 from .api_models import ApiResult, Layer, ServerStatus, VoteMapUserConfig
 from .api_request_context import ApiRequestContext, ApiRequestParams
-from .exceptions import CRCONApiClientError
-from .models import ServerCRCONDetails
 
 
 class CRCONApiClient(AbstractAsyncContextManager):

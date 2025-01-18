@@ -5,7 +5,7 @@ from discord.ext import commands
 
 from polebot.discord.discord_bot import DiscordBot
 
-from ...polebot_database import PolebotDatabase
+from ...services.polebot_database import PolebotDatabase
 from ..bot import Polebot
 from ..discord_utils import get_command_mention
 

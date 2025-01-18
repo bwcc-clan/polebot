@@ -14,17 +14,15 @@ from lagom import (
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from typeguard import TypeCheckError, check_type
 
-from polebot.models import ServerCRCONDetails
-from polebot.polebot_database import PolebotDatabase
-
-from .api_client import CRCONApiClient
-from .api_models import LogStreamObject
 from .app_config import AppConfig
-from .log_stream_client import CRCONLogStreamClient
+from .crcon.api_client import CRCONApiClient
+from .crcon.api_models import LogStreamObject
+from .crcon.log_stream_client import CRCONLogStreamClient
 from .map_selector.selector import MapSelector
-from .models import ServerParameters
-from .server_manager import ServerManager
-from .votemap_manager import VotemapManager
+from .models import ServerCRCONDetails, ServerParameters
+from .services.polebot_database import PolebotDatabase
+from .services.server_manager import ServerManager
+from .services.votemap_manager import VotemapManager
 
 X = TypeVar("X")
 

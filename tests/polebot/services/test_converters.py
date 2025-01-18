@@ -9,11 +9,11 @@ from bson import ObjectId
 from cattr import Converter
 from cattrs.preconf.bson import BsonConverter
 from cattrs.preconf.json import JsonConverter
-from utils import support_files_dir
+from testutils import support_files_dir
 from yarl import URL
 
-import polebot.converters as converters
-from polebot.api_models import (
+import polebot.services.converters as converters
+from polebot.crcon.api_models import (
     ApiResult,
     ApiResultWithArgs,
     DefaultMethods,
@@ -247,9 +247,10 @@ def describe_db_converter():
             # ***** ARRANGE *****
             guild_server = GuildServer(
                 guild_id=12345,
-                server_name="server_name",
+                label="dummy",
+                name="server_name",
                 crcon_details=ServerCRCONDetails("https://server.example.com", "some key"),
-                created_date_utc=dt.datetime.now(dt.UTC),
+                created_date_utc=dt.datetime(2025, 1, 15, 15, 43, 21, 234, dt.UTC),
             )
 
             # ***** ACT *****
@@ -257,16 +258,21 @@ def describe_db_converter():
 
             # ***** ASSERT *****
             assert result["guild_id"] == 12345
+            assert result["label"] == "dummy"
+            assert result["name"] == "server_name"
             assert isinstance(result["_id"], ObjectId)
             assert result["crcon_details"]["api_url"] == "https://server.example.com"
+            assert result["created_date_utc"] == dt.datetime(2025, 1, 15, 15, 43, 21, 234, dt.UTC)
 
         def can_structure(converter: Converter):
             # ***** ARRANGE *****
             db_rec = {
                 "_id": ObjectId(b"foo-bar-quux"),
                 "guild_id": 12345,
-                "server_name": "server_name",
+                "label": "the-label",
+                "name": "server_name",
                 "crcon_details": {"api_url": "https://server.example.com", "api_key": "some key"},
+                "created_date_utc": dt.datetime(2025, 1, 15, 15, 43, 21, 234, dt.UTC),
             }
 
             # ***** ACT *****
@@ -275,5 +281,7 @@ def describe_db_converter():
             # ***** ASSERT *****
             assert result.guild_id == 12345
             assert result.id == ObjectId(b"foo-bar-quux")
-            assert result.server_name == "server_name"
+            assert result.label == "the-label"
+            assert result.name == "server_name"
             assert result.crcon_details.api_url == URL("https://server.example.com")
+            assert result.created_date_utc == dt.datetime(2025, 1, 15, 15, 43, 21, 234, dt.UTC)

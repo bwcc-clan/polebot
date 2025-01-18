@@ -3,10 +3,10 @@
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from .app_config import AppConfig
+from ..app_config import AppConfig
+from ..exceptions import DatastoreError
+from ..models import GuildServer
 from .converters import make_db_converter
-from .exceptions import DatastoreError
-from .models import GuildServer
 
 
 class PolebotDatabase:
@@ -20,7 +20,7 @@ class PolebotDatabase:
 
     async def list_guild_servers(self, guild_id: int) -> list[GuildServer]:
         try:
-            cursor = self._db.guild_servers.find({"guild_id": {"$eq": guild_id}}).sort("server_name")
+            cursor = self._db.guild_servers.find({"guild_id": {"$eq": guild_id}}).sort("label")
             result = [self._converter.structure(doc, GuildServer) for doc in await cursor.to_list(length=100)]
         except Exception as ex:
             raise DatastoreError("Error reading guild server") from ex
