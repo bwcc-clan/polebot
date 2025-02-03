@@ -13,7 +13,7 @@ StreamID = Optional[str]
 
 
 class LogMessageType(StrEnum):
-    """Both native (from the game server) and synthetic (created by CRCON) log types"""
+    """Both native (from the game server) and synthetic (created by CRCON) log types."""
 
     admin = "ADMIN"
     admin_anti_cheat = "ADMIN ANTI-CHEAT"
@@ -85,8 +85,7 @@ class LogStreamResponse:
 
 @frozen(kw_only=True)
 class ApiResult[TResult]:
-    """The standard wrapper for the result of an API call. The payload, if any, is in the `result` attribute.
-    """
+    """The standard wrapper for the result of an API call. The payload, if any, is in the `result` attribute."""
 
     command: str
     failed: bool

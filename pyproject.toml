@@ -157,7 +157,7 @@ select = [
     # flake8-use-pathlib
     "PTH",
     ]
-ignore = ["D1"]
+ignore = ["D1", "UP007"]
 
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
