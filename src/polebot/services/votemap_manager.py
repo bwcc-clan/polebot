@@ -19,9 +19,9 @@ from ..crcon.api_models import (
     ServerStatus,
     VoteMapUserConfig,
 )
-from ..map_selector import MapSelector
 from ..models import ServerParameters
 from ..utils.cachetools import CacheItem, cache_item_ttu, ttl_cached
+from .map_selector import MapSelector
 
 logger = logging.getLogger(__name__)
 

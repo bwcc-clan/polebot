@@ -12,7 +12,6 @@ from polebot.crcon.api_models import (
     ServerStatus,
     VoteMapUserConfig,
 )
-from polebot.map_selector.selector import _SKIRMISH_MODES, MapSelector
 from polebot.models import (
     EnvironmentGroup,
     MapGroup,
@@ -20,6 +19,7 @@ from polebot.models import (
     ServerParameters,
     WeightingParameters,
 )
+from polebot.services.map_selector.selector import _SKIRMISH_MODES, MapSelector
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
 

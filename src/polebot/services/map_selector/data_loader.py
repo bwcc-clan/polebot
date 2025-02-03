@@ -3,9 +3,9 @@
 import pandas as pd
 from attrs import define
 
-from ..crcon.api_models import Layer
-from ..models import ServerParameters
-from ..services import converters
+from ...crcon.api_models import Layer
+from ...models import ServerParameters
+from .. import converters
 
 
 @define(kw_only=True)

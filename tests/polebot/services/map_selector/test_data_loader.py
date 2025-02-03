@@ -6,7 +6,6 @@ from cattrs.preconf.json import JsonConverter
 from testutils import support_files_dir
 
 from polebot.crcon.api_models import ApiResult, Layer
-from polebot.map_selector.data_loader import get_layer_dataframes, get_params_dataframes
 from polebot.models import (
     EnvironmentGroup,
     MapGroup,
@@ -15,6 +14,7 @@ from polebot.models import (
     WeightingParameters,
 )
 from polebot.services import converters
+from polebot.services.map_selector.data_loader import get_layer_dataframes, get_params_dataframes
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
 
