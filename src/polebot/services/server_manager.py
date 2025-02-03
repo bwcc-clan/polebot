@@ -9,8 +9,9 @@ import logging
 from types import TracebackType
 from typing import NoReturn, Self
 
-from ..crcon.api_models import LogMessageType, LogStreamObject
-from ..crcon.log_stream_client import CRCONLogStreamClient
+from crcon import LogStreamClient
+from crcon.api_models import LogMessageType, LogStreamObject
+
 from ..exceptions import TerminateTaskGroup
 from ..models import ServerParameters
 from .votemap_manager import VotemapManager
@@ -27,7 +28,7 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
         self,
         server_params: ServerParameters,
         loop: asyncio.AbstractEventLoop,
-        log_stream_client: CRCONLogStreamClient,
+        log_stream_client: LogStreamClient,
         votemap_manager: VotemapManager,
         stop_event: asyncio.Event | None = None,
     ) -> None:

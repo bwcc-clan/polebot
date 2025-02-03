@@ -1,3 +1,4 @@
+
 """The main entry point for the application."""
 
 import asyncio
@@ -11,6 +12,8 @@ import uvloop
 from dotenv import load_dotenv
 from lagom import Container
 
+from utils.logging import configure_logger
+
 from .app_config import AppConfig
 from .composition_root import (
     begin_server_context,
@@ -19,7 +22,6 @@ from .composition_root import (
 from .discord.bot import make_bot
 from .models import ServerParameters, get_server_params
 from .services.server_manager import ServerManager
-from .utils.logging import configure_logger
 
 log_level = os.getenv("LOG_LEVELS", ":INFO")
 log_location = os.getenv("LOG_LOCATION", "./logs")

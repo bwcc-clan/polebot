@@ -7,11 +7,13 @@ from attrs import define
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from ...composition_root import create_api_client
-from ...exceptions import CRCONApiClientError, DatastoreError
-from ...models import GuildServer, ServerCRCONDetails
-from ...services.polebot_database import PolebotDatabase
-from ...utils import is_absolute
+from crcon import ApiClientError, ServerConnectionDetails
+from polebot.composition_root import create_api_client
+from polebot.exceptions import DatastoreError
+from polebot.models import GuildServer
+from polebot.services.polebot_database import PolebotDatabase
+from utils import is_absolute
+
 from ..discord_bot import DiscordBot
 from ..discord_utils import (
     get_command_mention,
@@ -149,7 +151,7 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
 
-        crcon_details = ServerCRCONDetails(modal.result.server_props.api_url, modal.result.server_props.api_key)
+        crcon_details = ServerConnectionDetails(modal.result.server_props.api_url, modal.result.server_props.api_key)
         result = await self._attempt_connect_to_server(crcon_details)
 
         if not result[0]:
@@ -218,13 +220,13 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
             await interaction.delete_original_response()
             await interaction.followup.send(embed=embed, ephemeral=True)
 
-    async def _attempt_connect_to_server(self, crcon_details: ServerCRCONDetails) -> tuple[bool, str]:
+    async def _attempt_connect_to_server(self, crcon_details: ServerConnectionDetails) -> tuple[bool, str]:
         api_client = create_api_client(self.bot.container, crcon_details)
         result: tuple[bool, str] = (False, "Oops, an error occurred!")
         async with api_client:
             try:
                 status = await api_client.get_status()
-            except CRCONApiClientError as ex:
+            except ApiClientError as ex:
                 if ex.error == "You must be logged in to use this":
                     error = "Invalid API Key"
                 else:

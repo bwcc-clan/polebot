@@ -4,7 +4,7 @@ import pytest
 import pytz
 from attrs import define, field
 
-from polebot.utils import validators as utils_validators
+from utils import validators as utils_validators
 
 
 def describe_timezone_validator():

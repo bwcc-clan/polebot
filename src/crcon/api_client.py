@@ -9,21 +9,21 @@ from typing import Self, Unpack
 import aiohttp
 import aiohttp.typedefs
 
-from ..exceptions import CRCONApiClientError
-from ..models import ServerCRCONDetails
-from ..services import converters
 from .api_models import ApiResult, Layer, ServerStatus, VoteMapUserConfig
 from .api_request_context import ApiRequestContext, ApiRequestParams
+from .converters import make_rcon_converter
+from .exceptions import ApiClientError
+from .server_connection_details import ServerConnectionDetails
 
 
-class CRCONApiClient(AbstractAsyncContextManager):
+class ApiClient(AbstractAsyncContextManager):
     """A client for the CRCON API.
 
     This client is used to interact with the CRCON API, which provides an interface to the Hell Let Loose server's RCON
     interface.
     """
 
-    def __init__(self, crcon_details: ServerCRCONDetails, loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(self, crcon_details: ServerConnectionDetails, loop: asyncio.AbstractEventLoop) -> None:
         """Initialize the client.
 
         Args:
@@ -34,7 +34,7 @@ class CRCONApiClient(AbstractAsyncContextManager):
         self._loop = loop
         self._exit_stack = AsyncExitStack()
         self._session: aiohttp.ClientSession | None = None
-        self._converter = converters.make_rcon_converter()
+        self._converter = make_rcon_converter()
 
     async def __aenter__(self) -> Self:
         """Enter the context manager and set up the client."""
@@ -121,7 +121,7 @@ class CRCONApiClient(AbstractAsyncContextManager):
             j = await resp.json()
         api_result = self._converter.structure(j, ApiResult[result_type])  # type: ignore[valid-type]
         if api_result.failed:
-            raise CRCONApiClientError(
+            raise ApiClientError(
                 f"{api_result.command} command failed, error={api_result.error}",
                 api_result.command,
                 api_result.error or "",

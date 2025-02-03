@@ -5,16 +5,16 @@ import pytest
 from cattrs.preconf.json import JsonConverter
 from testutils import support_files_dir
 
-from polebot.crcon.api_models import ApiResult, Layer
+from crcon.api_models import ApiResult, Layer
+from crcon.server_connection_details import ServerConnectionDetails
 from polebot.models import (
     EnvironmentGroup,
     MapGroup,
-    ServerCRCONDetails,
     ServerParameters,
     WeightingParameters,
 )
 from polebot.services import converters
-from polebot.services.map_selector.data_loader import get_layer_dataframes, get_params_dataframes
+from polebot.services.map_selector.data_loader import get_layer_dataframes, get_weighting_dataframes
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
 
@@ -22,7 +22,7 @@ def describe_get_params_dataframes():
     def describe_loads_dataframes():
         @pytest.fixture
         def server_params() -> ServerParameters:
-            crcon_details = ServerCRCONDetails(api_url="https://hll.example.com", api_key="test_key")
+            crcon_details = ServerConnectionDetails(api_url="https://hll.example.com", api_key="test_key")
             weighting_params = WeightingParameters(
                 groups={
                     "Top": MapGroup(
@@ -44,7 +44,7 @@ def describe_get_params_dataframes():
             return ServerParameters(server_name="Test", crcon_details=crcon_details, weighting_params=weighting_params)
 
         def df_map_groups_contents_are_mapped(server_params: ServerParameters):
-            data = get_params_dataframes(server_params)
+            data = get_weighting_dataframes(server_params.weighting_params)
 
             assert data.df_map_groups.shape == (8, 3)
             expected_columns = {"map_group", "map_weight", "map_repeat_decay"}
@@ -61,7 +61,7 @@ def describe_get_params_dataframes():
             }
 
         def df_environments_contents_are_mapped(server_params: ServerParameters):
-            data = get_params_dataframes(server_params)
+            data = get_weighting_dataframes(server_params.weighting_params)
 
             assert data.df_environments.shape == (3, 3)
             expected_columns = {"environment_category", "environment_weight", "environment_repeat_decay"}

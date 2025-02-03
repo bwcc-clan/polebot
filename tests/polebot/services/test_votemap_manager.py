@@ -5,16 +5,15 @@ from unittest.mock import AsyncMock
 import pytest
 from testutils import support_files_dir
 
-from polebot.crcon.api_client import CRCONApiClient
-from polebot.crcon.api_models import ApiResult, Layer, ServerStatus, VoteMapUserConfig
+from crcon import ApiClient, converters
+from crcon.api_models import ApiResult, Layer, ServerStatus, VoteMapUserConfig
+from crcon.server_connection_details import ServerConnectionDetails
 from polebot.models import (
     EnvironmentGroup,
     MapGroup,
-    ServerCRCONDetails,
     ServerParameters,
     WeightingParameters,
 )
-from polebot.services import converters
 from polebot.services.votemap_manager import VotemapManager
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
@@ -56,7 +55,7 @@ def queue():
 
 @pytest.fixture
 def standard_server_params() -> ServerParameters:
-    crcon_details = ServerCRCONDetails(api_url="https://hll.example.com", api_key="dummy")
+    crcon_details = ServerConnectionDetails(api_url="https://hll.example.com", api_key="dummy")
     weighting_params = WeightingParameters(
         groups={
             "Top": MapGroup(
@@ -145,7 +144,7 @@ def mock_api_client(
     layers: list[Layer],
     votemap_config: VoteMapUserConfig,
 ) -> AsyncMock:
-    client = AsyncMock(spec=CRCONApiClient)
+    client = AsyncMock(spec=ApiClient)
     client.get_status.return_value = status
     client.get_maps.return_value = layers
     client.get_votemap_config.return_value = votemap_config

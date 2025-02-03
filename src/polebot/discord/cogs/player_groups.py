@@ -8,9 +8,10 @@ from attrs import define
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from ...exceptions import DatastoreError, DuplicateKeyError
-from ...models import GuildPlayerGroup
-from ...services.polebot_database import PolebotDatabase
+from polebot.exceptions import DatastoreError, DuplicateKeyError
+from polebot.models import GuildPlayerGroup
+from polebot.services.polebot_database import PolebotDatabase
+
 from ..discord_bot import DiscordBot
 from ..discord_utils import (
     get_command_mention,
