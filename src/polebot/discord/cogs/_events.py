@@ -1,13 +1,13 @@
 import inspect
 
 import discord
+from discord import app_commands
 from discord.ext import commands
-
-from polebot.discord.discord_bot import DiscordBot
 
 from ...services.polebot_database import PolebotDatabase
 from ..bot import Polebot
-from ..discord_utils import get_command_mention
+from ..discord_bot import DiscordBot
+from ..discord_utils import dummy_awaitable_callable, get_command_mention
 
 
 class _events(commands.Cog):  # noqa: N801
@@ -17,15 +17,70 @@ class _events(commands.Cog):  # noqa: N801
         self.bot = bot
         self.logger = self.bot.logger
         self._guild_repo = guild_repo
+        self.default_error_message = "🕳️ There is an error."
         # self.update_status.start()
 
-        # @bot.tree.error
-        # async def on_interaction_error(interaction: Interaction, error: Exception) -> None:
-        #     await handle_error(interaction, error)
+        @bot.tree.error
+        async def _dispatch_to_app_command_handler(
+            interaction: discord.Interaction,
+            error: discord.app_commands.AppCommandError,
+        ) -> None:
+            self.bot.dispatch("app_command_error", interaction, error)
 
     # @commands.Cog.listener()
-    # async def on_command_error(self, ctx: commands.Context, error: errors.CommandError) -> None:
+    # async def on_command_error(self, ctx: commands.Context, error: commands.CommandError) -> None:
     #     await handle_error(ctx, error)
+
+    async def _ensure_response_to_interaction(self, interaction: discord.Interaction) -> bool:
+        try:
+            await interaction.response.send_message(content=self.default_error_message, ephemeral=True)
+            return True
+        except discord.errors.InteractionResponded:
+            return False
+
+    @commands.Cog.listener("on_app_command_error")
+    async def get_app_command_error(
+        self,
+        interaction: discord.Interaction,
+        error: discord.app_commands.AppCommandError,
+    ) -> None:
+        """App command Error Handler.
+
+        doc: https://discordpy.readthedocs.io/en/latest/interactions/api.html#exception-hierarchy
+        """
+        edit = dummy_awaitable_callable
+        try:
+            await self._ensure_response_to_interaction(interaction)
+            edit = interaction.edit_original_response  # type:ignore[assignment]
+
+            raise error
+        except app_commands.CommandInvokeError as d_error:
+            if isinstance(d_error.original, discord.errors.InteractionResponded):
+                await edit(content=f"🕳️ {d_error.original}")
+            elif isinstance(d_error.original, discord.errors.Forbidden):
+                await edit(content=f"🕳️ `{type(d_error.original).__name__}` : {d_error.original.text}")
+            else:
+                await edit(content=f"🕳️ `{type(d_error.original).__name__}` : {d_error.original}")
+        except app_commands.CheckFailure as d_error:
+            if isinstance(d_error, app_commands.errors.CommandOnCooldown):
+                await edit(content=f"🕳️ Command is on cooldown, wait `{str(d_error).split(' ')[7]}` !")
+            else:
+                await edit(content=f"🕳️ `{type(d_error).__name__}` : {d_error}")
+        except app_commands.CommandNotFound:
+            msg = """
+            🕳️ Command was not found... seems to be a discord bug, probably due to desynchronization.
+
+            Maybe there are multiple commands with the same name, you should try the other one.
+            """
+            await edit(content=msg)
+        except (
+            app_commands.TransformerError,
+            app_commands.CommandLimitReached,
+            app_commands.CommandAlreadyRegistered,
+            app_commands.CommandSignatureMismatch,
+        ) as e:
+            self.logger.error("get_app_command_error", e)
+            raise
 
     # @tasks.loop(minutes=5.0)
     # async def update_status(self) -> None:

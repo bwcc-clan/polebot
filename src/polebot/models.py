@@ -36,6 +36,7 @@ def _str_to_url(val: str) -> URL:
 @frozen(auto_detect=True)
 class ServerCRCONDetails:
     """Details for connecting to a server via CRCON."""
+
     api_url: URL = field(converter=_str_to_url, validator=_validate_api_url)
     api_key: str = field(converter=expand_environment, validator=_validate_api_key)
     websocket_url: URL = field(init=False)
@@ -52,6 +53,7 @@ class ServerCRCONDetails:
 @frozen(kw_only=True)
 class EnvironmentGroup:
     """Represents a group of environments and their parameters."""
+
     weight: int = field(validator=[validators.ge(0), validators.le(100)])
     repeat_decay: float = field(validator=[validators.ge(0.0), validators.le(1.0)])
     environments: list[str] = field(factory=list)
@@ -60,6 +62,7 @@ class EnvironmentGroup:
 @frozen(kw_only=True)
 class MapGroup:
     """Represents a group of maps and their parameters."""
+
     weight: int = field(validator=[validators.ge(0), validators.le(100)])
     repeat_decay: float = field(validator=[validators.ge(0.0), validators.le(1.0)])
     maps: list[str] = field(factory=list)
@@ -68,6 +71,7 @@ class MapGroup:
 @frozen(kw_only=True)
 class WeightingParameters:
     """Parameters for map and environment weighting."""
+
     groups: dict[str, MapGroup]
     environments: dict[str, EnvironmentGroup]
 
@@ -75,6 +79,7 @@ class WeightingParameters:
 @frozen(kw_only=True)
 class ServerParameters:
     """Parameters for a CRCON server instance."""
+
     server_name: str
     crcon_details: ServerCRCONDetails
     weighting_params: WeightingParameters
@@ -102,16 +107,27 @@ def get_server_params(app_cfg: AppConfig) -> ServerParameters:
 
     raise RuntimeError(f"No valid configuration files found in '{config_dir}'")
 
-
 @define(kw_only=True)
-class GuildServer:
+class GuildDbModel:
     _id: ObjectId = field(factory=ObjectId)
     guild_id: int
+
+    @property
+    def id(self) -> ObjectId:
+        return self._id
+
+
+@define(kw_only=True)
+class GuildServer(GuildDbModel):
     label: str = field(validator=[validators.min_len(1), validators.max_len(10)])
     name: str = field(validator=[validators.min_len(1), validators.max_len(100)])
     crcon_details: ServerCRCONDetails
     created_date_utc: dt.datetime = field(validator=[utils_validators.is_utc()])
 
-    @property
-    def id(self) -> ObjectId:
-        return self._id
+
+@define(kw_only=True)
+class GuildPlayerGroup(GuildDbModel):
+    label: str = field(validator=[validators.min_len(1), validators.max_len(10)])
+    selector: str = field(validator=[validators.min_len(1), validators.max_len(100)])
+    created_date_utc: dt.datetime = field(validator=[utils_validators.is_utc()])
+

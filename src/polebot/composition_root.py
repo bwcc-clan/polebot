@@ -53,7 +53,13 @@ _container = Container()
 _container_initialized = False
 
 
-def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop) -> Container:
+async def create_polebot_database(app_config: AppConfig, mongo_db: AsyncIOMotorDatabase) -> PolebotDatabase:
+    db = PolebotDatabase(app_config, mongo_db)
+    await db.initialize()
+    return db
+
+
+async def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop) -> Container:
     """Initialises the dependency injection container.
 
     Args:
@@ -73,7 +79,7 @@ def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop) -> Co
     mongo_db: AsyncIOMotorDatabase = mongo_client[app_config.mongodb.db_name]
     _container[AsyncIOMotorClient] = mongo_client
     _container[AsyncIOMotorDatabase] = mongo_db
-    _container[PolebotDatabase] = PolebotDatabase(app_config, mongo_db)
+    _container[PolebotDatabase] = await create_polebot_database(app_config, mongo_db)
 
     @dependency_definition(_container, singleton=True)
     def _get_event_loop() -> asyncio.AbstractEventLoop:

@@ -1,6 +1,6 @@
 import inspect
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, NoReturn
 
 import discord
 from discord import ButtonStyle, Emoji, Interaction, PartialEmoji, SelectOption, app_commands, ui
@@ -80,6 +80,23 @@ class CallableSelect(ui.Select):
         await self._callback(interaction, self.values, *self._args, **self._kwargs)
 
 
+async def dummy_awaitable_callable(*args: Any, **kwargs: Any) -> NoReturn:  # noqa: ANN401
+    raise NotImplementedError("This function is a dummy function and is not meant to be called.")
+
+
+def to_discord_markdown(markdown: str) -> str:
+    lines = inspect.cleandoc(markdown).splitlines()
+    discord_markdown = ""
+    for idx, line in enumerate(lines):
+        if len(line):
+            discord_markdown += line
+            if idx != len(lines) - 1:
+                discord_markdown += " "
+        else:
+            discord_markdown += "\n"
+    return discord_markdown
+
+
 def get_error_embed(title: str, description: str | None = None) -> discord.Embed:
     embed = discord.Embed(color=discord.Color.from_rgb(221, 46, 68))
     embed.set_author(name=title, icon_url="https://cdn.discordapp.com/emojis/808045512393621585.png")
@@ -107,27 +124,20 @@ def get_question_embed(title: str, description: str | None = None) -> discord.Em
     return embed
 
 
-def to_discord_markdown(markdown: str) -> str:
-    lines = inspect.cleandoc(markdown).splitlines()
-    discord_markdown = ""
-    for idx, line in enumerate(lines):
-        if len(line):
-            discord_markdown += line
-            if idx != len(lines) - 1:
-                discord_markdown += " "
-        else:
-            discord_markdown += "\n"
-    return discord_markdown
+def get_unknown_error_embed() -> discord.Embed:
+    return get_error_embed(title="Oops! Something went wrong", description="Sorry, something bad happened :,(")
 
 
-@ttl_cache(size=100, seconds=60 * 60 * 24)
-async def get_command_mention(tree: discord.app_commands.CommandTree, name: str, subcommands: str | None = None) -> str:
+# @ttl_cache(size=100, seconds=60 * 60 * 24)
+@ttl_cache(size=100, seconds=60)
+async def get_command_mention(tree: discord.app_commands.CommandTree, name: str, subcommand: str | None = None) -> str:
     commands = await tree.fetch_commands()
-    command = next(cmd for cmd in commands if cmd.name == name)
-    if subcommands:
-        return f"</{command.name} {subcommands}:{command.id}>"
-    else:
-        return f"</{command.name}:{command.id}>"
+    command = next((cmd for cmd in commands if cmd.name == name), None)
+    if not command:
+        return "magic"
+    if subcommand:
+        return f"</{command.name} {subcommand}:{command.id}>"
+    return f"</{command.name}:{command.id}>"
 
 
 MyCommand = app_commands.Command | commands.HybridCommand | commands.Command

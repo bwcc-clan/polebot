@@ -17,8 +17,10 @@ class _TimezoneValidator:
         if not value.tzinfo:
             msg = f"'{attr.name}' must be timezone-aware"
             raise ValueError(msg)
-        if value.tzinfo.utcoffset != self.tz.utcoffset:
-            msg = f"Timezone UTC offset of '{attr.name}' must be {self.tz.utcoffset}: {value.tzinfo.utcoffset}"
+        if value.tzinfo.utcoffset(value) != self.tz.utcoffset(value):
+            offset1 = self.tz.utcoffset(value)
+            offset2 = value.tzinfo.utcoffset(value)
+            msg = f"Timezone UTC offset of '{attr.name}' must be {offset1}: {offset2}"
             raise ValueError(msg)
 
     def __repr__(self) -> str:

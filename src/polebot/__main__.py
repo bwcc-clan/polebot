@@ -73,7 +73,7 @@ async def async_main(loop: asyncio.AbstractEventLoop) -> None:
     """The main async entry point for the application."""
     load_dotenv()
     cfg = environ.to_config(AppConfig)
-    container = init_container(app_config=cfg, loop=loop)
+    container = await init_container(app_config=cfg, loop=loop)
 
     async with asyncio.TaskGroup() as tg:
         tg.create_task(run_polebot(container, cfg), name="polebot")

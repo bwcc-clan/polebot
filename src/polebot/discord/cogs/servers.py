@@ -1,13 +1,9 @@
-
 import datetime as dt
 import logging
 
-import bson
-import bson.errors
 import discord
 from aiohttp import ClientConnectorDNSError, ContentTypeError
 from attrs import define
-from bson import ObjectId
 from discord import Interaction, app_commands
 from discord.ext import commands
 
@@ -17,7 +13,13 @@ from ...models import GuildServer, ServerCRCONDetails
 from ...services.polebot_database import PolebotDatabase
 from ...utils import is_absolute
 from ..discord_bot import DiscordBot
-from ..discord_utils import get_command_mention, get_error_embed, get_success_embed, to_discord_markdown
+from ..discord_utils import (
+    get_command_mention,
+    get_error_embed,
+    get_success_embed,
+    get_unknown_error_embed,
+    to_discord_markdown,
+)
 
 
 @define
@@ -36,17 +38,26 @@ class ModalResult:
 
 class AddServerModal(discord.ui.Modal, title="Add CRCON Server"):
     label: discord.ui.TextInput = discord.ui.TextInput(
-        label="Label", placeholder="s1", min_length=1, max_length=10, required=True, row=0,
+        label="Label",
+        placeholder="srv1",
+        min_length=1,
+        max_length=10,
+        required=True,
+        row=0,
     )
     url: discord.ui.TextInput = discord.ui.TextInput(
-        label="Server URL", placeholder="https://my.crcon.server", min_length=1, max_length=254, row=1,
+        label="Server URL",
+        placeholder="https://my.crcon.server",
+        min_length=1,
+        max_length=254,
+        row=1,
     )
     api_key: discord.ui.TextInput = discord.ui.TextInput(
         label="API Key",
         placeholder="<Your CRCON API Key>",
         min_length=5,
         max_length=50,
-        row=1,
+        row=2,
     )
 
     def __init__(
@@ -72,8 +83,7 @@ class AddServerModal(discord.ui.Modal, title="Add CRCON Server"):
 
     async def on_error(self, interaction: Interaction, error: Exception) -> None:  # type: ignore
         self.logger.error("Modal error", exc_info=error)
-        embed = get_error_embed(title="Oops! Something went wrong", description="Sorry, something bad happened :,(")
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(embed=get_unknown_error_embed(), ephemeral=True)
         self.stop()
 
     def validate(self) -> str | ServerProps:
@@ -91,17 +101,18 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
     @app_commands.command(name="list", description="List your servers")
     @app_commands.guild_only()
     async def list_servers(self, interaction: Interaction) -> None:
+        await interaction.response.defer(ephemeral=True)
+
         if interaction.guild_id is None:
             self.bot.logger.error("add_server interaction has no guild_id")
-            await interaction.response.defer()
             return
 
         try:
-            guild_servers = await self.db.list_guild_servers(interaction.guild_id)
+            guild_servers = await self.db.list(GuildServer, interaction.guild_id, sort="label")
             if len(guild_servers):
                 content = ""
-                for idx, server in enumerate(guild_servers):
-                    content += f"{idx}. {discord.utils.escape_markdown(server.name)}\n"
+                for server in sorted(guild_servers, key=lambda s: s.label):
+                    content += f"{server.label}. {discord.utils.escape_markdown(server.name)}\n"
                 embed = get_success_embed(title="CRCON Servers", description=content)
             else:
                 content = to_discord_markdown(
@@ -111,11 +122,11 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
                     """,
                 )
                 embed = get_error_embed(title="No servers", description=content)
-            await interaction.response.send_message(embed=embed, ephemeral=True)
+            await interaction.followup.send(embed=embed, ephemeral=True)
 
         except DatastoreError as ex:
             self.bot.logger.error("Error accessing database", exc_info=ex)
-            await interaction.response.send_message("Oops, something went wrong!", ephemeral=True)
+            await interaction.followup.send("Oops, something went wrong!", ephemeral=True)
 
     @app_commands.command(name="add", description="Add a server")
     @app_commands.guild_only()
@@ -156,7 +167,7 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
             created_date_utc=dt.datetime.now(dt.UTC),
         )
         try:
-            await self.db.insert_guild_server(guild_server)
+            await self.db.insert(guild_server)
         except DatastoreError as ex:
             self.bot.logger.warning("Unable to add server", exc_info=ex)
             content = f"Unable to add server {server_name}."
@@ -172,9 +183,9 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
             return []
 
         await interaction.response.defer()
-        guild_servers = await self.db.list_guild_servers(interaction.guild_id)
+        guild_servers = await self.db.list(GuildServer, interaction.guild_id, sort="label")
         choices = [
-            app_commands.Choice(name=server.name, value=str(server.id))
+            app_commands.Choice(name=server.name, value=server.label)
             for server in guild_servers
             if current.lower() in server.name.lower() and server.id
         ]
@@ -188,30 +199,24 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
             self.bot.logger.error("add_server interaction has no guild_id")
             return
 
-        # If server contains a valid ObjectId then the user selected from the choices. If not, error
+        # If server contains a valid label then the user selected from the choices. If not, error
         await interaction.response.defer()
-        try:
-            server_id = ObjectId(server)
-        except bson.errors.InvalidId:
-            embed = get_error_embed(
-                title="Invalid selection",
-                description="You did not select a server from the list.",
-            )
-            await interaction.followup.send(embed=embed, ephemeral=True)
+        guild_server = await self.db.find_one(
+            GuildServer, guild_id=interaction.guild_id, attr_name="label", attr_value=server,
+        )
+        if guild_server:
+            await self.db.delete(GuildServer, guild_server.id)
+            self.bot.logger.info("Server %s deleted", server)
+            content = f"Server {guild_server.name} was removed."
+            embed = get_success_embed(title="Server removed", description=to_discord_markdown(content))
+            await interaction.followup.send(embed=embed)
         else:
-            guild_server = await self.db.get_guild_server(server_id)
-            if guild_server:
-                await self.db.delete_guild_server(server_id)
-                self.bot.logger.info("Server %s deleted", server)
-                content = f"Server {guild_server.name} was removed."
-                embed = get_success_embed(title="Server removed", description=to_discord_markdown(content))
-                await interaction.followup.send(embed=embed)
-            else:
-                embed = get_error_embed(
-                    title="Server not found",
-                    description="That server doesn't exist.",
-                )
-                await interaction.followup.send(embed=embed, ephemeral=True)
+            embed = get_error_embed(
+                title="Server not found",
+                description=f"No server labelled '{server}' exists.",
+            )
+            await interaction.delete_original_response()
+            await interaction.followup.send(embed=embed, ephemeral=True)
 
     async def _attempt_connect_to_server(self, crcon_details: ServerCRCONDetails) -> tuple[bool, str]:
         api_client = create_api_client(self.bot.container, crcon_details)
