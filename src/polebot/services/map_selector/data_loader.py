@@ -3,33 +3,34 @@
 import pandas as pd
 from attrs import define
 
-from ...crcon.api_models import Layer
-from ...models import ServerParameters
+from crcon.api_models import Layer
+from polebot.models import WeightingParameters
+
 from .. import converters
 
 
 @define(kw_only=True)
-class ServerParamsData:
-    """Dataframes that represent the server parameters."""
+class WeightingDataframes:
+    """Dataframes that represent the server weighting configuration parameters."""
     df_map_groups: pd.DataFrame
     df_environments: pd.DataFrame
 
 
-def get_params_dataframes(server_params: ServerParameters) -> ServerParamsData:
+def get_weighting_dataframes(weighting_params: WeightingParameters) -> WeightingDataframes:
     """Gets an object that contains dataframes that represent the server configuration.
 
     Args:
-        server_params (ServerParameters): The server configuration to read from.
+        weighting_params (WeightingParameters): The structured weighting data to convert to dataframes.
 
     Returns:
         ConfigData: An object that contains the config dataframes.
     """
     json_converter = converters.make_params_converter()
-    config = json_converter.unstructure(server_params)
+    config = json_converter.unstructure(weighting_params)
 
     df_map_groups = (
         (
-            pd.DataFrame.from_dict(config["weighting_params"]["groups"], orient="index")
+            pd.DataFrame.from_dict(config["groups"], orient="index")
             .reset_index(names="group")
             .explode("maps")
         )
@@ -46,7 +47,7 @@ def get_params_dataframes(server_params: ServerParameters) -> ServerParamsData:
 
     df_environments = (
         (
-            pd.DataFrame.from_dict(config["weighting_params"]["environments"], orient="index")
+            pd.DataFrame.from_dict(config["environments"], orient="index")
             .reset_index(names="environment")
             .explode("environments")
         )
@@ -61,7 +62,7 @@ def get_params_dataframes(server_params: ServerParameters) -> ServerParamsData:
         .set_index("environment")
     )
 
-    return ServerParamsData(df_map_groups=df_map_groups, df_environments=df_environments)
+    return WeightingDataframes(df_map_groups=df_map_groups, df_environments=df_environments)
 
 
 @define(kw_only=True)
@@ -81,7 +82,7 @@ def get_layer_dataframes(layers: list[Layer]) -> LayerData:
     Returns:
         LayerData: An object containing dataframes that represent the layers for different game modes.
     """
-    json_converter = converters.make_rcon_converter()
+    json_converter = converters.make_json_converter()
     l2 = json_converter.unstructure(layers)
 
     df_maps = pd.json_normalize(

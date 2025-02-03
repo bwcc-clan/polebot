@@ -5,7 +5,7 @@ from typing import Any
 import cachetools
 import pytest
 
-from polebot.utils.cachetools import CacheItem, cache_item_ttu, ttl_cached
+from utils.cachetools import CacheItem, cache_item_ttu, ttl_cached
 
 
 class HasCache:

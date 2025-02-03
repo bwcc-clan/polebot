@@ -1,3 +1,4 @@
+
 """Composition root that configures dependency injection for the application."""
 
 import asyncio
@@ -14,12 +15,12 @@ from lagom import (
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from typeguard import TypeCheckError, check_type
 
+from crcon import ApiClient, LogStreamClient, LogStreamClientConfig
+from crcon.api_models import LogStreamObject
+from crcon.server_connection_details import ServerConnectionDetails
+
 from .app_config import AppConfig
-from .crcon.api_client import CRCONApiClient
-from .crcon.api_models import LogStreamObject
-from .crcon.log_stream_client import CRCONLogStreamClient
-from .models import ServerCRCONDetails, ServerParameters
-from .services.map_selector.selector import MapSelector
+from .models import ServerParameters
 from .services.polebot_database import PolebotDatabase
 from .services.server_manager import ServerManager
 from .services.votemap_manager import VotemapManager
@@ -37,6 +38,7 @@ def define_context_dependency(ctr: Container, dep_type: type[X]) -> None:
     Yields:
         X: The dependency instance.
     """
+
     @context_dependency_definition(ctr)
     def _factory(c: Container) -> Iterable[dep_type]:  # type: ignore[valid-type]
         instance = c.resolve(dep_type, skip_definitions=True)
@@ -85,11 +87,16 @@ async def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop)
     def _get_event_loop() -> asyncio.AbstractEventLoop:
         return loop
 
+    @dependency_definition(_container)
+    def _get_crcon_log_stream_config(app_config: AppConfig) -> LogStreamClientConfig:
+        return LogStreamClientConfig(
+            max_websocket_connection_attempts=app_config.max_websocket_connection_attempts,
+        )
+
     define_context_dependency(_container, ServerManager)
-    define_context_dependency(_container, CRCONLogStreamClient)
+    define_context_dependency(_container, LogStreamClient)
     define_context_dependency(_container, VotemapManager)
-    define_context_dependency(_container, MapSelector)
-    define_context_dependency(_container, CRCONApiClient)
+    define_context_dependency(_container, ApiClient)
 
     _container_initialized = True
     return _container
@@ -119,14 +126,13 @@ def begin_server_context(
         context_types=[],
         context_singletons=[
             ServerManager,
-            CRCONLogStreamClient,
+            LogStreamClient,
             VotemapManager,
-            MapSelector,
-            CRCONApiClient,
+            ApiClient,
         ],
     )
     context_container[ServerParameters] = server_params
-    context_container[ServerCRCONDetails] = server_params.crcon_details
+    context_container[ServerConnectionDetails] = server_params.crcon_details
     if stop_event:
         context_container[asyncio.Event] = stop_event
     context_container[asyncio.Queue[LogStreamObject]] = asyncio.Queue[LogStreamObject](_QUEUE_SIZE)
@@ -135,8 +141,8 @@ def begin_server_context(
 
 def create_api_client(
     container: Container,
-    crcon_details: ServerCRCONDetails,
-) -> CRCONApiClient:
-    factory = container.magic_partial(CRCONApiClient)
+    crcon_details: ServerConnectionDetails,
+) -> ApiClient:
+    factory = container.magic_partial(ApiClient)
     api_client = factory(crcon_details)
     return api_client

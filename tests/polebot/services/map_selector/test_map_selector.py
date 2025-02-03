@@ -4,18 +4,18 @@ from collections import deque
 import pytest
 from testutils import support_files_dir
 
-import polebot.services.converters as converters
-from polebot.crcon.api_models import (
+import crcon.converters as converters
+from crcon.api_models import (
     ApiResult,
     GameMode,
     Layer,
     ServerStatus,
     VoteMapUserConfig,
 )
+from crcon.server_connection_details import ServerConnectionDetails
 from polebot.models import (
     EnvironmentGroup,
     MapGroup,
-    ServerCRCONDetails,
     ServerParameters,
     WeightingParameters,
 )
@@ -41,7 +41,7 @@ def describe_get_warfare():
 
     @pytest.fixture
     def standard_server_params() -> ServerParameters:
-        crcon_details = ServerCRCONDetails(api_url="https://hll.example.com", api_key="dummy")
+        crcon_details = ServerConnectionDetails(api_url="https://hll.example.com", api_key="dummy")
         weighting_params = WeightingParameters(
             groups={
                 "Top": MapGroup(

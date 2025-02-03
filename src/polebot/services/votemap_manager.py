@@ -11,16 +11,17 @@ from typing import Any, Self
 import cachetools
 import cachetools.keys
 
-from ..crcon.api_client import CRCONApiClient
-from ..crcon.api_models import (
+from crcon import ApiClient
+from crcon.api_models import (
     Layer,
     LogMessageType,
     LogStreamObject,
     ServerStatus,
     VoteMapUserConfig,
 )
+from utils.cachetools import CacheItem, cache_item_ttu, ttl_cached
+
 from ..models import ServerParameters
-from ..utils.cachetools import CacheItem, cache_item_ttu, ttl_cached
 from .map_selector import MapSelector
 
 logger = logging.getLogger(__name__)
@@ -33,7 +34,7 @@ class VotemapManager(contextlib.AbstractAsyncContextManager):
         self,
         server_params: ServerParameters,
         queue: asyncio.Queue[LogStreamObject],
-        api_client: CRCONApiClient,
+        api_client: ApiClient,
         loop: asyncio.AbstractEventLoop,
     ) -> None:
         """Initialise the votemap manager.

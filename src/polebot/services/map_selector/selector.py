@@ -7,9 +7,10 @@ from itertools import chain
 import numpy as np
 import pandas as pd
 
-from ...crcon.api_models import GameMode, Layer, ServerStatus, VoteMapUserConfig
-from ...models import ServerParameters
-from .data_loader import get_layer_dataframes, get_params_dataframes
+from crcon.api_models import GameMode, Layer, ServerStatus, VoteMapUserConfig
+from polebot.models import ServerParameters
+
+from .data_loader import get_layer_dataframes, get_weighting_dataframes
 
 _logger = logging.getLogger(__name__)
 
@@ -55,7 +56,7 @@ class MapSelector:
         self._layers_by_id = {layer.id: layer for layer in layers}
         self._current_layer = self._server_status.map
 
-        config_data = get_params_dataframes(server_params)
+        config_data = get_weighting_dataframes(server_params.weighting_params)
         self._df_map_groups = config_data.df_map_groups
         self._df_environments = config_data.df_environments
         map_data = get_layer_dataframes(layers=list(layers))

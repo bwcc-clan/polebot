@@ -12,23 +12,26 @@ from typing import Self
 import websockets
 import websockets.asyncio
 import websockets.asyncio.client
+from attrs import frozen
 from websockets.asyncio.client import ClientConnection
 from websockets.asyncio.client import (
     process_exception as process_exception_standard_rules,
 )
 
-from polebot.app_config import AppConfig
+from utils import backoff
 
-from ..exceptions import LogStreamMessageError, WebsocketConnectionError
-from ..models import ServerParameters
-from ..services import converters
-from ..utils import backoff
 from .api_models import LogMessageType, LogStreamObject, LogStreamResponse
+from .converters import make_rcon_converter
+from .exceptions import LogStreamMessageError, WebsocketConnectionError
+from .server_connection_details import ServerConnectionDetails
 
 logger = logging.getLogger(__name__)
 
+@frozen(kw_only=True)
+class LogStreamClientConfig:
+    max_websocket_connection_attempts: int
 
-class CRCONLogStreamClient:
+class LogStreamClient:
     """A client for the CRCON log stream.
 
     This client is used to connect to the CRCON log stream, which provides a stream of log messages from the Hell Let
@@ -38,29 +41,29 @@ class CRCONLogStreamClient:
 
     def __init__(
         self,
-        app_config: AppConfig,
-        server_params: ServerParameters,
+        config: LogStreamClientConfig,
+        crcon_details: ServerConnectionDetails,
         queue: asyncio.Queue[LogStreamObject],
         log_types: list[LogMessageType] | None = None,
     ) -> None:
         """Initialises the CRCON log stream client.
 
         Args:
-            app_config (AppConfig): The application configuration.
-            server_params (ServerParameters): The server configuration.
+            config (CRCONLogStreamClientConfig): The client configuration parameters.
+            crcon_details (ServerCRCONDetails): The server CRCON connection details.
             queue (asyncio.Queue[LogStreamObject]): The queue to which log messages should be forwarded.
             log_types (list[LogMessageType] | None, optional): The allowable log message types. Defaults to None,
             which indicates that all are allowed.
         """
-        self._app_config = app_config
-        self._server_params = server_params
+        self._config = config
+        self._crcon_details = crcon_details
         self._queue = queue
         self.log_types: list[LogMessageType] | None = log_types
 
-        self.websocket_url = self._server_params.crcon_details.websocket_url / "ws/logs"
+        self.websocket_url = self._crcon_details.websocket_url / "ws/logs"
         self.last_seen_id: str | None = None
         self._first_connection = True
-        self._converter = converters.make_rcon_converter()
+        self._converter = make_rcon_converter()
         self._exit_stack = contextlib.AsyncExitStack()
 
     async def __aenter__(self) -> Self:
@@ -106,7 +109,7 @@ class CRCONLogStreamClient:
 
                     # Retry the above exceptions with a backoff delay
                     if delays is None:
-                        delays = backoff(max_attempts=self._app_config.max_websocket_connection_attempts)
+                        delays = backoff(max_attempts=self._config.max_websocket_connection_attempts)
 
                     try:
                         delay = next(delays)
@@ -136,18 +139,19 @@ class CRCONLogStreamClient:
             # in the response when it should not. This causes the websockets library to raise a NotImplementedError.
             #
             # This exception therefore indicates that the connection was denied by the server, and we should not retry.
-            # The server logs (api_1.log) will contain a message indicating the reason for the denial, such as:
-            # "API key not associated with a user, denying connection to /ws/logs" - the API key is invalid.
-            # "User x does not have permission to view /ws/logs" - the user does not have the required permissions.
+            # The CRCON server logs (api_1.log) will contain a message indicating the reason for the denial, such as:
+            # "API key not associated with a user, denying connection to /ws/logs" - the API key is invalid. "User x
+            # does not have permission to view /ws/logs" - the user does not have the required permissions.
             #
-            # The user needs "Can view the get_structured_logs endpoint" permission to view the log stream.
+            # The user associated with the API key needs "Can view the get_structured_logs endpoint" permission to view
+            # the log stream.
             logger.error("Websocket connection error, check API Key and user permissions", exc_info=e)
             raise WebsocketConnectionError("Websocket connection refused") from None
 
     def _connect(self) -> websockets.connect:
-        headers = {"Authorization": f"Bearer {self._server_params.crcon_details.api_key}"}
-        if self._server_params.crcon_details.rcon_headers:
-            headers.update(self._server_params.crcon_details.rcon_headers)
+        headers = {"Authorization": f"Bearer {self._crcon_details.api_key}"}
+        if self._crcon_details.rcon_headers:
+            headers.update(self._crcon_details.rcon_headers)
 
         # Note that we handle exceptions more aggressively on first connection, because e.g. DNS errors are more
         # likely to be configuration mistakes. On subsequent re-connection attempts, since the configuration has

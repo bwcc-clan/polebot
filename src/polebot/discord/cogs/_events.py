@@ -4,7 +4,8 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from ...services.polebot_database import PolebotDatabase
+from polebot.services.polebot_database import PolebotDatabase
+
 from ..bot import Polebot
 from ..discord_bot import DiscordBot
 from ..discord_utils import dummy_awaitable_callable, get_command_mention

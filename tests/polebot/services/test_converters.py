@@ -12,8 +12,9 @@ from cattrs.preconf.json import JsonConverter
 from testutils import support_files_dir
 from yarl import URL
 
+import crcon.converters
 import polebot.services.converters as converters
-from polebot.crcon.api_models import (
+from crcon.api_models import (
     ApiResult,
     ApiResultWithArgs,
     DefaultMethods,
@@ -27,7 +28,8 @@ from polebot.crcon.api_models import (
     Team,
     VoteMapUserConfig,
 )
-from polebot.models import GuildServer, ServerCRCONDetails, ServerParameters
+from crcon.server_connection_details import ServerConnectionDetails
+from polebot.models import GuildServer, ServerParameters
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
 
@@ -79,7 +81,7 @@ def describe_structure():
     def describe_with_get_maps():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.make_rcon_converter()
+            return crcon.converters.make_rcon_converter()
 
         @pytest.fixture
         def contents() -> Any:
@@ -136,7 +138,7 @@ def describe_structure():
     def describe_with_get_votemap_config():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.make_rcon_converter()
+            return crcon.converters.make_rcon_converter()
 
         @pytest.fixture
         def contents() -> Any:
@@ -157,7 +159,7 @@ def describe_structure():
     def describe_with_set_votemap_whitelist():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.make_rcon_converter()
+            return crcon.converters.make_rcon_converter()
 
         @pytest.fixture
         def contents() -> Any:
@@ -182,7 +184,7 @@ def describe_structure():
     def describe_with_logstream_response():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.make_rcon_converter()
+            return crcon.converters.make_rcon_converter()
 
         @pytest.fixture
         def contents() -> Any:
@@ -249,7 +251,7 @@ def describe_db_converter():
                 guild_id=12345,
                 label="dummy",
                 name="server_name",
-                crcon_details=ServerCRCONDetails("https://server.example.com", "some key"),
+                crcon_details=ServerConnectionDetails("https://server.example.com", "some key"),
                 created_date_utc=dt.datetime(2025, 1, 15, 15, 43, 21, 234, dt.UTC),
             )
 

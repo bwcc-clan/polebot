@@ -8,7 +8,7 @@ from discord.ext import commands
 from discord.utils import MISSING
 from typing_extensions import TypeVar
 
-from ..utils.cachetools import ttl_cache
+from utils.cachetools import ttl_cache
 
 if TYPE_CHECKING:
     from discord.client import Client
