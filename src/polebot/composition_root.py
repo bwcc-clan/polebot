@@ -18,8 +18,8 @@ from .app_config import AppConfig
 from .crcon.api_client import CRCONApiClient
 from .crcon.api_models import LogStreamObject
 from .crcon.log_stream_client import CRCONLogStreamClient
-from .map_selector.selector import MapSelector
 from .models import ServerCRCONDetails, ServerParameters
+from .services.map_selector.selector import MapSelector
 from .services.polebot_database import PolebotDatabase
 from .services.server_manager import ServerManager
 from .services.votemap_manager import VotemapManager
