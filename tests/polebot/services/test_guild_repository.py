@@ -18,7 +18,7 @@ def describe_test_something():
         repo = _GuildPlayerGroupRepository(db=mock_db)  # type: ignore
         pdb = PolebotDatabase(AppConfig(), mock_db)  # type: ignore
 
-        assert repo.model_desc == "message group"
+        assert repo.model_desc == "player group"
 
         obj = GuildPlayerGroup(
             guild_id=1234,
