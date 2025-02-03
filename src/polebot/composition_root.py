@@ -14,14 +14,15 @@ from lagom import (
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from typeguard import TypeCheckError, check_type
 
-from .api_client import CRCONApiClient
-from .api_models import LogStreamObject
 from .app_config import AppConfig
-from .log_stream_client import CRCONLogStreamClient
+from .crcon.api_client import CRCONApiClient
+from .crcon.api_models import LogStreamObject
+from .crcon.log_stream_client import CRCONLogStreamClient
 from .map_selector.selector import MapSelector
-from .server_manager import ServerManager
-from .server_params import ServerParameters
-from .votemap_manager import VotemapManager
+from .models import ServerCRCONDetails, ServerParameters
+from .services.polebot_database import PolebotDatabase
+from .services.server_manager import ServerManager
+from .services.votemap_manager import VotemapManager
 
 X = TypeVar("X")
 
@@ -47,12 +48,18 @@ def define_context_dependency(ctr: Container, dep_type: type[X]) -> None:
             yield instance
 
 
-container = Container()
+_container = Container()
 
 _container_initialized = False
 
 
-def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop) -> Container:
+async def create_polebot_database(app_config: AppConfig, mongo_db: AsyncIOMotorDatabase) -> PolebotDatabase:
+    db = PolebotDatabase(app_config, mongo_db)
+    await db.initialize()
+    return db
+
+
+async def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop) -> Container:
     """Initialises the dependency injection container.
 
     Args:
@@ -65,24 +72,27 @@ def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop) -> Co
     global _container_initialized
 
     if _container_initialized:
-        return container
+        return _container
 
-    container[AppConfig] = app_config
-    container[AsyncIOMotorClient] = AsyncIOMotorClient(app_config.mongodb.connection_string, tz_aware=True)
-    container[AsyncIOMotorDatabase] = container[AsyncIOMotorClient][app_config.mongodb.db_name]
+    _container[AppConfig] = app_config
+    mongo_client: AsyncIOMotorClient = AsyncIOMotorClient(app_config.mongodb.connection_string, tz_aware=True)
+    mongo_db: AsyncIOMotorDatabase = mongo_client[app_config.mongodb.db_name]
+    _container[AsyncIOMotorClient] = mongo_client
+    _container[AsyncIOMotorDatabase] = mongo_db
+    _container[PolebotDatabase] = await create_polebot_database(app_config, mongo_db)
 
-    @dependency_definition(container, singleton=True)
+    @dependency_definition(_container, singleton=True)
     def _get_event_loop() -> asyncio.AbstractEventLoop:
         return loop
 
-    define_context_dependency(container, ServerManager)
-    define_context_dependency(container, CRCONLogStreamClient)
-    define_context_dependency(container, VotemapManager)
-    define_context_dependency(container, MapSelector)
-    define_context_dependency(container, CRCONApiClient)
+    define_context_dependency(_container, ServerManager)
+    define_context_dependency(_container, CRCONLogStreamClient)
+    define_context_dependency(_container, VotemapManager)
+    define_context_dependency(_container, MapSelector)
+    define_context_dependency(_container, CRCONApiClient)
 
     _container_initialized = True
-    return container
+    return _container
 
 
 _QUEUE_SIZE = 1000
@@ -116,17 +126,17 @@ def begin_server_context(
         ],
     )
     context_container[ServerParameters] = server_params
+    context_container[ServerCRCONDetails] = server_params.crcon_details
     if stop_event:
         context_container[asyncio.Event] = stop_event
     context_container[asyncio.Queue[LogStreamObject]] = asyncio.Queue[LogStreamObject](_QUEUE_SIZE)
     return context_container
 
 
-# def create_server_manager(
-#     container: Container,
-#     server_params: ServerParameters,
-#     stop_event: asyncio.Event | None = None,
-# ) -> ServerManager:
-#     factory = container.magic_partial(ServerManager)
-#     server_manager = factory(server_params, stop_event=stop_event)
-#     return server_manager
+def create_api_client(
+    container: Container,
+    crcon_details: ServerCRCONDetails,
+) -> CRCONApiClient:
+    factory = container.magic_partial(CRCONApiClient)
+    api_client = factory(crcon_details)
+    return api_client

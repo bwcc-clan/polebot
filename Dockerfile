@@ -61,7 +61,8 @@ WORKDIR /app
 
 COPY --from=requirements /tmp/requirements.txt /app/requirements.txt
 
-RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt
+RUN pip install --no-cache-dir --upgrade -r /app/requirements.txt \
+  && pip install --target /tmp debugpy
 
 # Set environment variables to ensure that Python output is sent straight to the terminal
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
@@ -75,8 +76,6 @@ FROM builder AS debug
 
 ARG USERNAME=serviceuser
 
-RUN pip install --target /tmp debugpy
-
 USER $USERNAME
 
 CMD ["python", "-m", "polebot"]
@@ -85,6 +84,8 @@ CMD ["python", "-m", "polebot"]
 # production stage - run the application
 # ==============================================================================
 FROM builder AS production
+
+RUN pip uninstall debugpy
 
 ARG USERNAME=serviceuser
 

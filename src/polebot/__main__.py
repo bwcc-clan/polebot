@@ -16,9 +16,10 @@ from .composition_root import (
     begin_server_context,
     init_container,
 )
-from .logging_utils import configure_logger
-from .server_manager import ServerManager
-from .server_params import ServerParameters, get_server_params
+from .discord.bot import make_bot
+from .models import ServerParameters, get_server_params
+from .services.server_manager import ServerManager
+from .utils.logging import configure_logger
 
 log_level = os.getenv("LOG_LEVELS", ":INFO")
 log_location = os.getenv("LOG_LOCATION", "./logs")
@@ -64,14 +65,18 @@ async def run_server_manager(
         async with server_manager:
             await server_manager.run()
 
+async def run_polebot(container: Container, app_config: AppConfig) -> None:
+    bot = make_bot(container)
+    await bot.start(app_config.discord_token)
 
 async def async_main(loop: asyncio.AbstractEventLoop) -> None:
     """The main async entry point for the application."""
     load_dotenv()
     cfg = environ.to_config(AppConfig)
-    container = init_container(app_config=cfg, loop=loop)
+    container = await init_container(app_config=cfg, loop=loop)
 
     async with asyncio.TaskGroup() as tg:
+        tg.create_task(run_polebot(container, cfg), name="polebot")
         server_params = get_server_params(cfg)
         tg.create_task(
             run_server_manager(server_params, container),

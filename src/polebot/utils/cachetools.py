@@ -1,13 +1,15 @@
 """A module containing utilities for caching."""
 
-from collections.abc import Callable, Hashable
+import contextlib
+from collections.abc import Awaitable, Callable, Hashable
+from functools import wraps
 from typing import Any, ParamSpec, Protocol, TypeVar, runtime_checkable
 
 import cachetools
 import cachetools.keys
 import wrapt
 
-from .utils import is_async_callable
+from . import is_async_callable
 
 # Wrapt is untyped, plus it's highly verbose to type decorators etc so we ignore for now
 # mypy: ignore-errors
@@ -21,6 +23,7 @@ T = TypeVar("T")
 
 class CacheItem[T]:
     """A class representing an item in a cache."""
+
     def __init__(self, ttl: float, value: T) -> None:
         """Initialises a cache item.
 
@@ -35,6 +38,7 @@ class CacheItem[T]:
 @runtime_checkable
 class CacheProvider[T](Protocol):
     """A protocol for classes that provide a cache for caching decorators."""
+
     def get_cache(self, cache_hint: str | None = None) -> cachetools.TLRUCache[Any, CacheItem[T]]:
         """Returns a cache for the instance.
 
@@ -48,11 +52,16 @@ class CacheProvider[T](Protocol):
 
 
 def ttl_cached(
-    time_to_live: float, cache_hint: str | None = None,
+    time_to_live: float,
+    cache_hint: str | None = None,
 ) -> Callable[[Callable[Param, RetType]], Callable[Param, RetType]]:
     """A decorator that caches the result of a method for a specified time-to-live."""
+
     def try_get_cache(
-        wrapped, instance, args: tuple[Hashable, ...], kwargs: dict[str, Any],  # noqa: ANN001
+        wrapped,  # noqa: ANN001
+        instance,  # noqa: ANN001
+        args: tuple[Hashable, ...],
+        kwargs: dict[str, Any],
     ) -> tuple[cachetools.Cache[Any, CacheItem[Any]], tuple[Hashable, ...], CacheItem[Any] | None]:
         if not isinstance(instance, CacheProvider):
             raise RuntimeError("The wrapped method's parent class must implement the CacheProvider protocol")
@@ -101,3 +110,27 @@ def cache_item_ttu(key: Any, value: CacheItem[Any], now: float) -> float:  # noq
         float: A value representing the time-to-use for the cache item.
     """
     return now + value.ttl
+
+
+def ttl_cache(
+    size: int,
+    seconds: int,
+) -> Callable[[Callable[Param, Awaitable[RetType]]], Callable[Param, Awaitable[RetType]]]:
+    def decorator(func: Callable[Param, Awaitable[RetType]]) -> Callable[Param, Awaitable[RetType]]:
+        func.cache = cachetools.TTLCache(size, ttl=seconds)  # type: ignore
+
+        @wraps(func)
+        async def wrapper(*args: Param.args, **kwargs: Param.kwargs) -> RetType:
+            k = cachetools.keys.hashkey(*args, **kwargs)
+            try:
+                return func.cache[k]  # type: ignore
+            except KeyError:
+                pass  # key not found
+            v = await func(*args, **kwargs)
+            with contextlib.suppress(ValueError):
+                func.cache[k] = v  # type: ignore
+            return v
+
+        return wrapper
+
+    return decorator

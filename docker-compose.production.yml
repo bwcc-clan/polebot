@@ -4,9 +4,10 @@ services:
     pull_policy: build
     environment:
       - RCON_API_KEY=${RCON_API_KEY}
-      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_LEVELS=${LOG_LEVELS:-INFO}
       - LOG_LOCATION=/var/log/polebot
       - APP_CONFIG_DIR=/app/.config
+      - APP_DISCORD_TOKEN=${APP_DISCORD_TOKEN}
     volumes:
     - polebot_logs:/var/log/polebot
     - /apps/polebot/.config:/app/.config

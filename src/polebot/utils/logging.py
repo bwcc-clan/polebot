@@ -50,7 +50,7 @@ def configure_logger(log_dir: str, log_levels: str = ":INFO") -> None:
             "version": 1,
             "formatters": {
                 "default": {
-                    "()": "polebot.logging_utils.OneLineExceptionFormatter",
+                    "()": "polebot.utils.logging.OneLineExceptionFormatter",
                     "format": "%(asctime)s (%(name)s) [%(levelname)s] %(message)s",
                     "datefmt": "%Y-%m-%dT%H:%M:%S",
                 },

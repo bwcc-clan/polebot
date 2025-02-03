@@ -1,17 +1,20 @@
 """Configuration classes for the application."""
 
+import datetime as dt
 import json
 import logging
 from pathlib import Path
 from typing import Any
 
-from attrs import field, frozen, validators
+from attrs import define, field, frozen, validators
+from bson import ObjectId
 from yarl import URL
 
 from polebot.app_config import AppConfig
 
-from . import converters
+from .services import converters
 from .utils import expand_environment
+from .utils import validators as utils_validators
 
 _logger = logging.getLogger(__name__)
 
@@ -33,6 +36,7 @@ def _str_to_url(val: str) -> URL:
 @frozen(auto_detect=True)
 class ServerCRCONDetails:
     """Details for connecting to a server via CRCON."""
+
     api_url: URL = field(converter=_str_to_url, validator=_validate_api_url)
     api_key: str = field(converter=expand_environment, validator=_validate_api_key)
     websocket_url: URL = field(init=False)
@@ -49,6 +53,7 @@ class ServerCRCONDetails:
 @frozen(kw_only=True)
 class EnvironmentGroup:
     """Represents a group of environments and their parameters."""
+
     weight: int = field(validator=[validators.ge(0), validators.le(100)])
     repeat_decay: float = field(validator=[validators.ge(0.0), validators.le(1.0)])
     environments: list[str] = field(factory=list)
@@ -57,6 +62,7 @@ class EnvironmentGroup:
 @frozen(kw_only=True)
 class MapGroup:
     """Represents a group of maps and their parameters."""
+
     weight: int = field(validator=[validators.ge(0), validators.le(100)])
     repeat_decay: float = field(validator=[validators.ge(0.0), validators.le(1.0)])
     maps: list[str] = field(factory=list)
@@ -65,6 +71,7 @@ class MapGroup:
 @frozen(kw_only=True)
 class WeightingParameters:
     """Parameters for map and environment weighting."""
+
     groups: dict[str, MapGroup]
     environments: dict[str, EnvironmentGroup]
 
@@ -72,6 +79,7 @@ class WeightingParameters:
 @frozen(kw_only=True)
 class ServerParameters:
     """Parameters for a CRCON server instance."""
+
     server_name: str
     crcon_details: ServerCRCONDetails
     weighting_params: WeightingParameters
@@ -98,3 +106,28 @@ def get_server_params(app_cfg: AppConfig) -> ServerParameters:
             return server_params
 
     raise RuntimeError(f"No valid configuration files found in '{config_dir}'")
+
+@define(kw_only=True)
+class GuildDbModel:
+    _id: ObjectId = field(factory=ObjectId)
+    guild_id: int
+
+    @property
+    def id(self) -> ObjectId:
+        return self._id
+
+
+@define(kw_only=True)
+class GuildServer(GuildDbModel):
+    label: str = field(validator=[validators.min_len(1), validators.max_len(10)])
+    name: str = field(validator=[validators.min_len(1), validators.max_len(100)])
+    crcon_details: ServerCRCONDetails
+    created_date_utc: dt.datetime = field(validator=[utils_validators.is_utc()])
+
+
+@define(kw_only=True)
+class GuildPlayerGroup(GuildDbModel):
+    label: str = field(validator=[validators.min_len(1), validators.max_len(10)])
+    selector: str = field(validator=[validators.min_len(1), validators.max_len(100)])
+    created_date_utc: dt.datetime = field(validator=[utils_validators.is_utc()])
+
