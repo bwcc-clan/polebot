@@ -12,7 +12,7 @@ import uvloop
 from dotenv import load_dotenv
 from lagom import Container
 
-from utils.logging import configure_logger
+from utils.log_tools import configure_logger
 
 from .app_config import AppConfig
 from .composition_root import (

@@ -1,4 +1,3 @@
-
 """This module contains the logging configuration for the application."""
 
 import atexit
@@ -7,10 +6,23 @@ import logging
 import logging.config
 from pathlib import Path
 from queue import Queue
+from typing import Any, Literal, Optional
 
 
 class OneLineExceptionFormatter(logging.Formatter):
     """A custom formatter that formats exceptions into one line."""
+
+    def __init__(
+        self,
+        fmt: Optional[str] = None,
+        datefmt: Optional[str] = None,
+        style: Literal["%", "{", "$"] = "%",
+        validate: bool = True,
+        *,
+        defaults: Any = None,
+    ) -> None:
+        super().__init__(fmt, datefmt, style, validate, defaults=defaults)
+
     def formatException(self, exc_info) -> str:  # type: ignore[no-untyped-def]  # noqa: N802 , D102 , ANN001 (overriden method)
         result = super().formatException(exc_info)
         return repr(result)  # or format into one line however you want to
@@ -50,14 +62,16 @@ def configure_logger(log_dir: str, log_levels: str = ":INFO") -> None:
             "version": 1,
             "formatters": {
                 "default": {
-                    "()": "polebot.utils.logging.OneLineExceptionFormatter",
-                    "format": "%(asctime)s (%(name)s) [%(levelname)s] %(message)s",
-                    "datefmt": "%Y-%m-%dT%H:%M:%S",
+                    "()": lambda: OneLineExceptionFormatter(
+                        fmt="%(asctime)s (%(name)s) [%(levelname)s] %(message)s",
+                        datefmt="%Y-%m-%dT%H:%M:%S",
+                    ),
                 },
             },
             "handlers": {
                 "console": {
-                    "level": logger_level_map.get("!console", None) or logger_level_map["root"],
+                    "level": logger_level_map.get("!console", None)
+                    or logger_level_map["root"],
                     "class": "logging.StreamHandler",
                     "formatter": "default",
                     "stream": "ext://sys.stdout",
@@ -80,7 +94,10 @@ def configure_logger(log_dir: str, log_levels: str = ":INFO") -> None:
                 },
             },
             "loggers": {
-                "root": {"level": logger_level_map["root"], "handlers": ["queue_handler"]},
+                "root": {
+                    "level": logger_level_map["root"],
+                    "handlers": ["queue_handler"],
+                },
                 "urllib3.connectionpool": {"level": "INFO"},
             },
             "disable_existing_loggers": False,
@@ -93,7 +110,11 @@ def configure_logger(log_dir: str, log_levels: str = ":INFO") -> None:
     for logger_name, level_text in logger_level_map.items():
         if logger_name == "!console":
             continue
-        logger = logging.getLogger() if logger_name in ["", "root"] else logging.getLogger(logger_name)
+        logger = (
+            logging.getLogger()
+            if logger_name in ["", "root"]
+            else logging.getLogger(logger_name)
+        )
         logger.setLevel(level_text)
     _update_log_handlers()
     logging.getLogger().info("Log levels = '%s'", log_levels)
@@ -102,7 +123,9 @@ def configure_logger(log_dir: str, log_levels: str = ":INFO") -> None:
 def _parse_log_levels(log_levels: str) -> dict[str, str]:
     level_map = logging.getLevelNamesMapping()
     levels: dict[str, str] = {}
-    for item in [x.split(":") for x in [c.strip() for c in log_levels.split(",") if c.strip()]]:
+    for item in [
+        x.split(":") for x in [c.strip() for c in log_levels.split(",") if c.strip()]
+    ]:
         with contextlib.suppress(ValueError):  # Ignore badly-formatted input values
             logger_name, level_text, *_ = item
             logger_name = logger_name.strip()
@@ -121,6 +144,7 @@ def _parse_log_levels(log_levels: str) -> dict[str, str]:
     if "root" not in levels:
         levels["root"] = "INFO"
     return levels
+
 
 def _update_log_handlers() -> None:
     """Reconfigure all loggers to use the same handlers as the root logger.
