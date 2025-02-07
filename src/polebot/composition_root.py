@@ -54,17 +54,13 @@ _container = Container()
 _container_initialized = False
 
 
-async def create_polebot_database(
-    app_config: AppConfig, mongo_db: AsyncIOMotorDatabase
-) -> PolebotDatabase:
+async def create_polebot_database(app_config: AppConfig, mongo_db: AsyncIOMotorDatabase) -> PolebotDatabase:
     db = PolebotDatabase(app_config, mongo_db)
     await db.initialize()
     return db
 
 
-async def init_container(
-    app_config: AppConfig, loop: asyncio.AbstractEventLoop
-) -> Container:
+async def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop) -> Container:
     """Initialises the dependency injection container.
 
     Args:
@@ -81,9 +77,7 @@ async def init_container(
 
     # *** SINGLETON ***
     _container[AppConfig] = app_config
-    mongo_client: AsyncIOMotorClient = AsyncIOMotorClient(
-        app_config.mongodb.connection_string, tz_aware=True
-    )
+    mongo_client: AsyncIOMotorClient = AsyncIOMotorClient(app_config.mongodb.connection_string, tz_aware=True)
     mongo_db: AsyncIOMotorDatabase = mongo_client[app_config.mongodb.db_name]
     _container[AsyncIOMotorClient] = mongo_client
     _container[AsyncIOMotorDatabase] = mongo_db
@@ -96,9 +90,7 @@ async def init_container(
     @dependency_definition(_container, singleton=True)
     def _get_crcon_log_stream_client_settings(c: Container) -> LogStreamClientSettings:
         return LogStreamClientSettings(
-            max_websocket_connection_attempts=c[
-                AppConfig
-            ].max_websocket_connection_attempts,
+            max_websocket_connection_attempts=c[AppConfig].max_websocket_connection_attempts,
         )
 
     # *** LIFETIME SCOPE ***
@@ -144,9 +136,7 @@ def begin_server_context(
     context_container[ServerConnectionDetails] = server_params.crcon_details
     if stop_event:
         context_container[asyncio.Event] = stop_event
-    context_container[asyncio.Queue[LogStreamObject]] = asyncio.Queue[LogStreamObject](
-        _QUEUE_SIZE
-    )
+    context_container[asyncio.Queue[LogStreamObject]] = asyncio.Queue[LogStreamObject](_QUEUE_SIZE)
     return context_container
 
 
