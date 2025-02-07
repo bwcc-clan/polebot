@@ -27,8 +27,8 @@ from .map_selector import MapSelector
 logger = logging.getLogger(__name__)
 
 
-class VotemapManager(contextlib.AbstractAsyncContextManager):
-    """The votemap manager is responsible for managing the votemap selection on the server."""
+class VotemapProcessor(contextlib.AbstractAsyncContextManager):
+    """The votemap manager is responsible for processing votemap selections on the server."""
 
     def __init__(
         self,

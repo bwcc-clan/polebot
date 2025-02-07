@@ -14,7 +14,7 @@ from crcon.api_models import LogMessageType, LogStreamObject
 
 from ..exceptions import TerminateTaskGroup
 from ..models import ServerParameters
-from .votemap_manager import VotemapManager
+from .votemap_processor import VotemapProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -22,14 +22,14 @@ logger = logging.getLogger(__name__)
 _QUEUE_SIZE = 1000
 
 
-class ServerManager(contextlib.AbstractAsyncContextManager):
-    """The server manager is responsible for managing the server lifecycle of a single CRCON server instance."""
+class ServerController(contextlib.AbstractAsyncContextManager):
+    """Responsible for controlling a single CRCON server instance."""
     def __init__(
         self,
         server_params: ServerParameters,
         loop: asyncio.AbstractEventLoop,
         log_stream_client: LogStreamClient,
-        votemap_manager: VotemapManager,
+        votemap_processor: VotemapProcessor,
         stop_event: asyncio.Event | None = None,
     ) -> None:
         """Initialise the server manager.
@@ -37,8 +37,8 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
         Args:
             server_params (ServerParameters): The server parameters.
             loop (asyncio.AbstractEventLoop): The event loop to use for async operations.
-            log_stream_client (CRCONLogStreamClient): The log stream client to use for log message retrieval.
-            votemap_manager (VotemapManager): The votemap manager to use for votemap selection.
+            log_stream_client (LogStreamClient): The log stream client to use for log message retrieval.
+            votemap_processor (VotemapProcessor): The votemap manager to use for votemap selection.
             stop_event (asyncio.Event | None, optional): If specified, an event that will stop the instance when fired.
         """
         self._server_params = server_params
@@ -46,7 +46,7 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
         self._stop_event = stop_event
         self._queue = asyncio.Queue[LogStreamObject](_QUEUE_SIZE)
         self._log_stream_client = log_stream_client
-        self._votemap_manager = votemap_manager
+        self._votemap_processor = votemap_processor
 
         self._task_group: asyncio.TaskGroup | None = None
         self._exit_stack = contextlib.AsyncExitStack()
@@ -55,7 +55,7 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
         """This method is a part of the context manager protocol. It is called when entering the context manager."""
         await self._exit_stack.__aenter__()
 
-        await self._exit_stack.enter_async_context(self._votemap_manager)
+        await self._exit_stack.enter_async_context(self._votemap_processor)
 
         self._log_stream_client.log_types = [LogMessageType.match_start, LogMessageType.match_end]
         await self._exit_stack.enter_async_context(self._log_stream_client)
@@ -70,7 +70,7 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
 
     async def run(self) -> None:
         """Run the server manager."""
-        if not self._votemap_manager or not self._log_stream_client:
+        if not self._votemap_processor or not self._log_stream_client:
             raise RuntimeError("ServerManager context must be entered")
 
         tasks: list[asyncio.Task] = []
@@ -79,7 +79,7 @@ class ServerManager(contextlib.AbstractAsyncContextManager):
                 self._task_group = tg
                 if self._stop_event:
                     tasks.append(tg.create_task(self._monitor_stop_event(), name="stop-event-monitor"))
-                tasks.append(tg.create_task(self._votemap_manager.run(), name="votemap-manager"))
+                tasks.append(tg.create_task(self._votemap_processor.run(), name="votemap-manager"))
                 tasks.append(tg.create_task(self._log_stream_client.run(), name="log-stream-client"))
         except* TerminateTaskGroup:
            pass

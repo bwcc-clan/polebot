@@ -1,4 +1,3 @@
-
 """The main entry point for the application."""
 
 import asyncio
@@ -21,7 +20,7 @@ from .composition_root import (
 )
 from .discord.bot import make_bot
 from .models import ServerParameters, get_server_params
-from .services.server_manager import ServerManager
+from .services.server_controller import ServerController
 
 log_level = os.getenv("LOG_LEVELS", ":INFO")
 log_location = os.getenv("LOG_LOCATION", "./logs")
@@ -46,11 +45,11 @@ def shutdown(sig: signal.Signals) -> None:
         logger.info("Received %s", sig.name)
 
 
-async def run_server_manager(
+async def run_server_controller(
     server_params: ServerParameters,
     container: Container,
 ) -> None:
-    """Runs the server manager for the specified server configuration.
+    """Runs the server controller for the specified server configuration.
 
     Creates a DI context for the server, then instantiates and runs the server manager from within that context.
 
@@ -63,9 +62,9 @@ async def run_server_manager(
         server_params,
         _stop_event,
     ) as context_container:
-        server_manager = context_container[ServerManager]
-        async with server_manager:
-            await server_manager.run()
+        server_controller = context_container[ServerController]
+        async with server_controller:
+            await server_controller.run()
 
 async def run_polebot(container: Container, app_config: AppConfig) -> None:
     bot = make_bot(container)
@@ -81,7 +80,7 @@ async def async_main(loop: asyncio.AbstractEventLoop) -> None:
         tg.create_task(run_polebot(container, cfg), name="polebot")
         server_params = get_server_params(cfg)
         tg.create_task(
-            run_server_manager(server_params, container),
+            run_server_controller(server_params, container),
             name="server-manager",
         )
 

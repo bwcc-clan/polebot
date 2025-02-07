@@ -14,7 +14,7 @@ from polebot.models import (
     ServerParameters,
     WeightingParameters,
 )
-from polebot.services.votemap_manager import VotemapManager
+from polebot.services.votemap_processor import VotemapProcessor
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
 
@@ -105,7 +105,7 @@ def describe_process_map_started():
         queue = asyncio.Queue()
         api_client = mock_api_client(standard_status, standard_layers, VoteMapUserConfig())
         api_client.set_votemap_whitelist.side_effect = set_votemap_whitelist
-        sut = VotemapManager(standard_server_params, queue, api_client, event_loop)
+        sut = VotemapProcessor(standard_server_params, queue, api_client, event_loop)
 
         # *** ACT ***
         await sut._process_map_started()
@@ -127,7 +127,7 @@ def describe_process_map_ended():
         event_loop = asyncio.get_event_loop()
         queue = asyncio.Queue()
         api_client = mock_api_client(standard_status, standard_layers, VoteMapUserConfig())
-        sut = VotemapManager(standard_server_params, queue, api_client, event_loop)
+        sut = VotemapProcessor(standard_server_params, queue, api_client, event_loop)
         sut._layer_history.appendleft("utahbeach_warfare")
 
         # *** ACT ***

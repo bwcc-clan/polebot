@@ -21,8 +21,8 @@ from crcon.server_connection_details import ServerConnectionDetails
 from .app_config import AppConfig
 from .models import ServerParameters
 from .services.polebot_database import PolebotDatabase
-from .services.server_manager import ServerManager
-from .services.votemap_manager import VotemapManager
+from .services.server_controller import ServerController
+from .services.votemap_processor import VotemapProcessor
 
 X = TypeVar("X")
 
@@ -94,9 +94,9 @@ async def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop)
         )
 
     # *** LIFETIME SCOPE ***
-    define_context_dependency(_container, ServerManager)
+    define_context_dependency(_container, ServerController)
     define_context_dependency(_container, LogStreamClient)
-    define_context_dependency(_container, VotemapManager)
+    define_context_dependency(_container, VotemapProcessor)
     define_context_dependency(_container, ApiClient)
 
     _container_initialized = True
@@ -126,9 +126,9 @@ def begin_server_context(
         container,
         context_types=[],
         context_singletons=[
-            ServerManager,
+            ServerController,
             LogStreamClient,
-            VotemapManager,
+            VotemapProcessor,
             ApiClient,
         ],
     )
