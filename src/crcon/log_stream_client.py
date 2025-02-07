@@ -108,13 +108,14 @@ class LogStreamClient:
                             logger.info("Connection was closed normally")
                         case LogStreamMessageError():
                             logger.warning(
-                                "Remote server indicates error: %s", ex.message
+                                "Remote server indicates error: %s",
+                                ex.message,
                             )
 
                     # Retry the above exceptions with a backoff delay
                     if delays is None:
                         delays = backoff(
-                            max_attempts=self._settings.max_websocket_connection_attempts
+                            max_attempts=self._settings.max_websocket_connection_attempts,
                         )
 
                     try:

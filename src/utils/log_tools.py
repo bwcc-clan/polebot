@@ -19,7 +19,7 @@ class OneLineExceptionFormatter(logging.Formatter):
         style: Literal["%", "{", "$"] = "%",
         validate: bool = True,
         *,
-        defaults: Any = None,
+        defaults: Any = None,  # noqa: ANN401
     ) -> None:
         super().__init__(fmt, datefmt, style, validate, defaults=defaults)
 

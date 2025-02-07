@@ -1,5 +1,5 @@
 
-ARG PYTHON_IMAGE=python:3.12.3-slim-bookworm
+ARG PYTHON_IMAGE=python:3.13.2-slim-bookworm
 
 FROM $PYTHON_IMAGE AS base
 

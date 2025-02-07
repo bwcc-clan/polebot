@@ -30,4 +30,5 @@
   ],
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
+  "ruff.nativeServer": "off",
 }
