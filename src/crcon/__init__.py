@@ -4,7 +4,7 @@ from yarl import URL
 
 from .api_client import ApiClient
 from .exceptions import ApiClientError, LogStreamMessageError, WebsocketConnectionError
-from .log_stream_client import LogStreamClient, LogStreamClientConfig
+from .log_stream_client import LogStreamClient, LogStreamClientSettings
 from .server_connection_details import ServerConnectionDetails
 
 
@@ -19,13 +19,19 @@ def _validate_api_url(_instance: Any, _attribute: Any, value: URL) -> None:  # n
 
 
 def _str_to_url(val: str) -> URL:
-    return URL(val).with_query(None).with_fragment(None).with_user(None).with_password(None)
+    return (
+        URL(val)
+        .with_query(None)
+        .with_fragment(None)
+        .with_user(None)
+        .with_password(None)
+    )
 
 
 __all__ = [
     "ApiClient",
     "LogStreamClient",
-    "LogStreamClientConfig",
+    "LogStreamClientSettings",
     "ApiClientError",
     "LogStreamMessageError",
     "WebsocketConnectionError",

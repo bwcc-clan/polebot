@@ -1,4 +1,3 @@
-
 """Composition root that configures dependency injection for the application."""
 
 import asyncio
@@ -15,7 +14,7 @@ from lagom import (
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 from typeguard import TypeCheckError, check_type
 
-from crcon import ApiClient, LogStreamClient, LogStreamClientConfig
+from crcon import ApiClient, LogStreamClient, LogStreamClientSettings
 from crcon.api_models import LogStreamObject
 from crcon.server_connection_details import ServerConnectionDetails
 
@@ -55,13 +54,17 @@ _container = Container()
 _container_initialized = False
 
 
-async def create_polebot_database(app_config: AppConfig, mongo_db: AsyncIOMotorDatabase) -> PolebotDatabase:
+async def create_polebot_database(
+    app_config: AppConfig, mongo_db: AsyncIOMotorDatabase
+) -> PolebotDatabase:
     db = PolebotDatabase(app_config, mongo_db)
     await db.initialize()
     return db
 
 
-async def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop) -> Container:
+async def init_container(
+    app_config: AppConfig, loop: asyncio.AbstractEventLoop
+) -> Container:
     """Initialises the dependency injection container.
 
     Args:
@@ -76,8 +79,11 @@ async def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop)
     if _container_initialized:
         return _container
 
+    # *** SINGLETON ***
     _container[AppConfig] = app_config
-    mongo_client: AsyncIOMotorClient = AsyncIOMotorClient(app_config.mongodb.connection_string, tz_aware=True)
+    mongo_client: AsyncIOMotorClient = AsyncIOMotorClient(
+        app_config.mongodb.connection_string, tz_aware=True
+    )
     mongo_db: AsyncIOMotorDatabase = mongo_client[app_config.mongodb.db_name]
     _container[AsyncIOMotorClient] = mongo_client
     _container[AsyncIOMotorDatabase] = mongo_db
@@ -87,12 +93,15 @@ async def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop)
     def _get_event_loop() -> asyncio.AbstractEventLoop:
         return loop
 
-    @dependency_definition(_container)
-    def _get_crcon_log_stream_config(app_config: AppConfig) -> LogStreamClientConfig:
-        return LogStreamClientConfig(
-            max_websocket_connection_attempts=app_config.max_websocket_connection_attempts,
+    @dependency_definition(_container, singleton=True)
+    def _get_crcon_log_stream_client_settings(c: Container) -> LogStreamClientSettings:
+        return LogStreamClientSettings(
+            max_websocket_connection_attempts=c[
+                AppConfig
+            ].max_websocket_connection_attempts,
         )
 
+    # *** LIFETIME SCOPE ***
     define_context_dependency(_container, ServerManager)
     define_context_dependency(_container, LogStreamClient)
     define_context_dependency(_container, VotemapManager)
@@ -135,7 +144,9 @@ def begin_server_context(
     context_container[ServerConnectionDetails] = server_params.crcon_details
     if stop_event:
         context_container[asyncio.Event] = stop_event
-    context_container[asyncio.Queue[LogStreamObject]] = asyncio.Queue[LogStreamObject](_QUEUE_SIZE)
+    context_container[asyncio.Queue[LogStreamObject]] = asyncio.Queue[LogStreamObject](
+        _QUEUE_SIZE
+    )
     return context_container
 
 

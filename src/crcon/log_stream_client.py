@@ -27,9 +27,11 @@ from .server_connection_details import ServerConnectionDetails
 
 logger = logging.getLogger(__name__)
 
+
 @frozen(kw_only=True)
-class LogStreamClientConfig:
+class LogStreamClientSettings:
     max_websocket_connection_attempts: int
+
 
 class LogStreamClient:
     """A client for the CRCON log stream.
@@ -41,7 +43,7 @@ class LogStreamClient:
 
     def __init__(
         self,
-        config: LogStreamClientConfig,
+        settings: LogStreamClientSettings,
         crcon_details: ServerConnectionDetails,
         queue: asyncio.Queue[LogStreamObject],
         log_types: list[LogMessageType] | None = None,
@@ -49,13 +51,13 @@ class LogStreamClient:
         """Initialises the CRCON log stream client.
 
         Args:
-            config (CRCONLogStreamClientConfig): The client configuration parameters.
-            crcon_details (ServerCRCONDetails): The server CRCON connection details.
+            settings (LogStreamClientSettings): The client configuration settings.
+            crcon_details (ServerConnectionDetails): The server CRCON connection details.
             queue (asyncio.Queue[LogStreamObject]): The queue to which log messages should be forwarded.
             log_types (list[LogMessageType] | None, optional): The allowable log message types. Defaults to None,
             which indicates that all are allowed.
         """
-        self._config = config
+        self._settings = settings
         self._crcon_details = crcon_details
         self._queue = queue
         self.log_types: list[LogMessageType] | None = log_types
@@ -105,11 +107,15 @@ class LogStreamClient:
                         case websockets.ConnectionClosedOK():
                             logger.info("Connection was closed normally")
                         case LogStreamMessageError():
-                            logger.warning("Remote server indicates error: %s", ex.message)
+                            logger.warning(
+                                "Remote server indicates error: %s", ex.message
+                            )
 
                     # Retry the above exceptions with a backoff delay
                     if delays is None:
-                        delays = backoff(max_attempts=self._config.max_websocket_connection_attempts)
+                        delays = backoff(
+                            max_attempts=self._settings.max_websocket_connection_attempts
+                        )
 
                     try:
                         delay = next(delays)
@@ -145,7 +151,10 @@ class LogStreamClient:
             #
             # The user associated with the API key needs "Can view the get_structured_logs endpoint" permission to view
             # the log stream.
-            logger.error("Websocket connection error, check API Key and user permissions", exc_info=e)
+            logger.error(
+                "Websocket connection error, check API Key and user permissions",
+                exc_info=e,
+            )
             raise WebsocketConnectionError("Websocket connection refused") from None
 
     def _connect(self) -> websockets.connect:
