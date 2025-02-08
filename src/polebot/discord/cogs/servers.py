@@ -1,4 +1,3 @@
-import datetime as dt
 import logging
 
 import discord
@@ -11,11 +10,13 @@ from crcon import ApiClientError, ServerConnectionDetails
 from polebot.composition_root import create_api_client
 from polebot.exceptions import DatastoreError
 from polebot.models import GuildServer
+from polebot.services import converters
 from polebot.services.polebot_database import PolebotDatabase
 from utils import is_absolute
 
 from ..discord_bot import DiscordBot
 from ..discord_utils import (
+    get_autocomplete_servers,
     get_command_mention,
     get_error_embed,
     get_success_embed,
@@ -99,6 +100,7 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
     def __init__(self, bot: DiscordBot, db: PolebotDatabase) -> None:
         self.bot = bot
         self.db = db
+        self._converter = converters.make_params_converter()
 
     @app_commands.command(name="list", description="List your servers")
     @app_commands.guild_only()
@@ -110,7 +112,7 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
             return
 
         try:
-            guild_servers = await self.db.list(GuildServer, interaction.guild_id, sort="label")
+            guild_servers = await self.db.fetch_all(GuildServer, interaction.guild_id, sort="label")
             if len(guild_servers):
                 content = ""
                 for server in sorted(guild_servers, key=lambda s: s.label):
@@ -120,7 +122,7 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
                 content = to_discord_markdown(
                     f"""
                     No CRCON servers have been added yet. Use
-                    {await get_command_mention(self.bot.tree, 'servers', 'add')} to add one.
+                    {await get_command_mention(self.bot.tree, "servers", "add")} to add one.
                     """,
                 )
                 embed = get_error_embed(title="No servers", description=content)
@@ -166,7 +168,6 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
             label=modal.result.server_props.label,
             name=server_name,
             crcon_details=crcon_details,
-            created_date_utc=dt.datetime.now(dt.UTC),
         )
         try:
             await self.db.insert(guild_server)
@@ -181,17 +182,7 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
             await interaction.followup.send(embed=embed)
 
     async def _autocomplete_servers(self, interaction: Interaction, current: str) -> list[app_commands.Choice[str]]:
-        if interaction.guild_id is None:
-            return []
-
-        await interaction.response.defer()
-        guild_servers = await self.db.list(GuildServer, interaction.guild_id, sort="label")
-        choices = [
-            app_commands.Choice(name=server.name, value=server.label)
-            for server in guild_servers
-            if current.lower() in server.name.lower() and server.id
-        ]
-        return choices
+        return await get_autocomplete_servers(self.db, interaction, current)
 
     @app_commands.command(name="remove", description="Remove a server")
     @app_commands.guild_only()
@@ -204,7 +195,10 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
         # If server contains a valid label then the user selected from the choices. If not, error
         await interaction.response.defer()
         guild_server = await self.db.find_one(
-            GuildServer, guild_id=interaction.guild_id, attr_name="label", attr_value=server,
+            GuildServer,
+            guild_id=interaction.guild_id,
+            attr_name="label",
+            attr_value=server,
         )
         if guild_server:
             await self.db.delete(GuildServer, guild_server.id)

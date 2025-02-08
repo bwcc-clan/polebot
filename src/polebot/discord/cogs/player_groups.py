@@ -1,4 +1,3 @@
-import datetime as dt
 import logging
 import re
 from typing import Self, overload
@@ -140,7 +139,7 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
             return
 
         try:
-            player_groups = await self.db.list(GuildPlayerGroup, interaction.guild_id, sort="label")
+            player_groups = await self.db.fetch_all(GuildPlayerGroup, interaction.guild_id, sort="label")
             if len(player_groups):
                 content = ""
                 for player_group in sorted(player_groups, key=lambda s: s.label):
@@ -185,7 +184,6 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
             guild_id=interaction.guild_id,
             label=modal.result.value.label,
             selector=modal.result.value.selector,
-            created_date_utc=dt.datetime.now(dt.UTC),
         )
         try:
             await self.db.insert(player_group)
@@ -207,7 +205,7 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
             return []
 
         await interaction.response.defer()
-        player_groups = await self.db.list(GuildPlayerGroup, interaction.guild_id, sort="label")
+        player_groups = await self.db.fetch_all(GuildPlayerGroup, interaction.guild_id, sort="label")
         choices = [
             app_commands.Choice(name=f"{group.label}: {group.selector}", value=group.label)
             for group in player_groups

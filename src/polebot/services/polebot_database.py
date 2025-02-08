@@ -1,7 +1,8 @@
 """Polebot database layer."""
 
+import datetime as dt
 from collections.abc import Iterable, Sequence
-from typing import Any, cast, get_args
+from typing import Any, get_args
 
 import pymongo
 import pymongo.errors
@@ -9,8 +10,8 @@ from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from ..app_config import AppConfig
-from ..exceptions import DatastoreError, DuplicateKeyError
-from ..models import GuildDbModel, GuildPlayerGroup, GuildServer
+from ..exceptions import ConcurrencyError, DatastoreError, DuplicateKeyError
+from ..models import UNSAVED_SENTINEL, DbModel, GuildPlayerGroup, GuildServer
 from .converters import make_db_converter
 
 
@@ -28,34 +29,42 @@ class PolebotDatabase:
             for index in repo.get_indexes():
                 await self._db[repo.collection_name].create_index(index.keys, **index.props)
 
-    async def insert[T: GuildDbModel](self, obj: T) -> ObjectId: # type: ignore[reportInvalidTypeVarUse]
+    async def insert[T: DbModel](self, obj: T) -> T:
         cls = type(obj)
-        repo_type = _GuildRepository.repository_map.get(cls, None)
+        repo_type: type[_GuildRepository[T]] | None = _GuildRepository.repository_map.get(cls, None)
         if not repo_type:
             raise RuntimeError(f"Repository not found for type {cls.__name__}")
         repo = repo_type(self._db)
         return await repo.insert(obj)
 
-    async def list[T: GuildDbModel](self, cls: type[T], guild_id: int, *, sort: str | None = None) -> list[T]:
-        repo_type = _GuildRepository.repository_map.get(cls, None)
+    async def update[T: DbModel](self, obj: T) -> T:
+        cls = type(obj)
+        repo_type: type[_GuildRepository[T]] | None = _GuildRepository.repository_map.get(cls, None)
+        if not repo_type:
+            raise RuntimeError(f"Repository not found for type {cls.__name__}")
+        repo = repo_type(self._db)
+        return await repo.update(obj)
+
+    async def fetch_all[T: DbModel](self, cls: type[T], guild_id: int, *, sort: str | None = None) -> list[T]:
+        repo_type: type[_GuildRepository[T]] | None = _GuildRepository.repository_map.get(cls, None)
         if not repo_type:
             raise RuntimeError(f"Repository not found for type {cls.__name__}")
         repo = repo_type(self._db)
         try:
-            docs = await repo.list_all(guild_id, sort=sort)
+            docs = await repo.fetch_all(guild_id, sort=sort)
         except Exception as ex:
             raise DatastoreError(f"Error reading {repo.model_desc} list") from ex
         else:
             return docs
 
-    async def find_one[T: GuildDbModel](self, cls: type[T], guild_id: int, attr_name: str, attr_value: Any) -> T | None:  # noqa: ANN401
-        repo_type = _GuildRepository.repository_map.get(cls, None)
+    async def find_one[T: DbModel](self, cls: type[T], guild_id: int, attr_name: str, attr_value: Any) -> T | None:  # noqa: ANN401
+        repo_type: type[_GuildRepository[T]] | None = _GuildRepository.repository_map.get(cls, None)
         if not repo_type:
             raise RuntimeError(f"Repository not found for type {cls.__name__}")
         repo = repo_type(self._db)
         return await repo.find_one(guild_id, attr_name=attr_name, attr_value=attr_value)
 
-    async def delete[T: GuildDbModel](self, cls: type[T], doc_id: ObjectId) -> None:
+    async def delete[T: DbModel](self, cls: type[T], doc_id: ObjectId) -> None:
         repo_type = _GuildRepository.repository_map.get(cls, None)
         if not repo_type:
             raise RuntimeError(f"Repository not found for type {cls.__name__}")
@@ -71,8 +80,9 @@ class IndexDefinition:
         self.keys = keys
         self.props = kwargs
 
-class _GuildRepository[T: GuildDbModel]:
-    repository_map: dict[type[GuildDbModel], type["_GuildRepository"]] = {}
+
+class _GuildRepository[T: DbModel]:
+    repository_map: dict[type[DbModel], type["_GuildRepository"]] = {}
     model_desc: str
     collection_name: str
     model_type: type[T]
@@ -89,7 +99,11 @@ class _GuildRepository[T: GuildDbModel]:
         self._collection = db[self.collection_name]
         self._converter = make_db_converter()
 
-    async def insert(self, obj: T) -> ObjectId:
+    async def insert(self, obj: T) -> T:
+        if obj._v != UNSAVED_SENTINEL:
+            raise DatastoreError("Object has previously been saved")
+        obj._v = 1
+        obj._created_utc = obj._modified_utc = dt.datetime.now(dt.UTC)
         try:
             doc = self._converter.unstructure(obj)
             result = await self._collection.insert_one(doc)
@@ -98,9 +112,26 @@ class _GuildRepository[T: GuildDbModel]:
         except Exception as ex:
             raise DatastoreError(f"Error inserting {self.model_desc}") from ex
         else:
-            return cast(ObjectId, result.inserted_id)
+            obj._id = result.inserted_id
+            return obj
 
-    async def list_all(self, guild_id: int, *, sort: str | None = None) -> list[T]:
+    async def update(self, obj: T) -> T:
+        if obj._v == UNSAVED_SENTINEL:
+            raise DatastoreError("Object has never been saved")
+        current_version = obj._v
+        obj._v += 1
+        obj._modified_utc = dt.datetime.now(dt.UTC)
+        try:
+            doc = self._converter.unstructure(obj)
+            result = await self._collection.replace_one({"_id": {"$eq": obj.id}, "_v": {"$eq": current_version}}, doc)
+        except Exception as ex:
+            raise DatastoreError(f"Error updating {self.model_desc}") from ex
+        else:
+            if result.modified_count == 0:
+                raise ConcurrencyError(current_version)
+            return obj
+
+    async def fetch_all(self, guild_id: int, *, sort: str | None = None) -> list[T]:
         try:
             cursor = self._collection.find({"guild_id": {"$eq": guild_id}})
             if sort:

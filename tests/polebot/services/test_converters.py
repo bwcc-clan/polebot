@@ -252,7 +252,6 @@ def describe_db_converter():
                 label="dummy",
                 name="server_name",
                 crcon_details=ServerConnectionDetails("https://server.example.com", "some key"),
-                created_date_utc=dt.datetime(2025, 1, 15, 15, 43, 21, 234, dt.UTC),
             )
 
             # ***** ACT *****
@@ -264,7 +263,6 @@ def describe_db_converter():
             assert result["name"] == "server_name"
             assert isinstance(result["_id"], ObjectId)
             assert result["crcon_details"]["api_url"] == "https://server.example.com"
-            assert result["created_date_utc"] == dt.datetime(2025, 1, 15, 15, 43, 21, 234, dt.UTC)
 
         def can_structure(converter: Converter):
             # ***** ARRANGE *****
@@ -274,7 +272,8 @@ def describe_db_converter():
                 "label": "the-label",
                 "name": "server_name",
                 "crcon_details": {"api_url": "https://server.example.com", "api_key": "some key"},
-                "created_date_utc": dt.datetime(2025, 1, 15, 15, 43, 21, 234, dt.UTC),
+                "_created_utc": dt.datetime(2025, 1, 15, 15, 43, 21, 234, dt.UTC),
+                "_updated_utc": dt.datetime(2025, 1, 15, 15, 43, 21, 234, dt.UTC),
             }
 
             # ***** ACT *****

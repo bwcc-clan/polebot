@@ -1,4 +1,3 @@
-import datetime as dt
 
 import pytest
 from mongomock_motor import AsyncMongoMockClient
@@ -24,9 +23,8 @@ def describe_test_something():
             guild_id=1234,
             label="ONE",
             selector="some_stuff",
-            created_date_utc=dt.datetime(2025, 1, 15, 15, 43, 21, 234, dt.UTC),
         )
-        doc_id = await pdb.insert(obj)
+        inserted = await pdb.insert(obj)
 
-        found = await pdb.find_one(GuildPlayerGroup, 1234, "_id", doc_id)
+        found = await pdb.find_one(GuildPlayerGroup, 1234, "_id", inserted.id)
         assert found

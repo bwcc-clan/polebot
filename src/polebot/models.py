@@ -10,7 +10,6 @@ from bson import ObjectId
 
 from crcon.server_connection_details import ServerConnectionDetails
 from polebot.app_config import AppConfig
-from utils import validators as utils_validators
 
 from .services import converters
 
@@ -74,27 +73,49 @@ def get_server_params(app_cfg: AppConfig) -> ServerParameters:
 
     raise RuntimeError(f"No valid configuration files found in '{config_dir}'")
 
+
+UNSAVED_SENTINEL = -1
+
+
 @define(kw_only=True)
-class GuildDbModel:
+class DbModel:
     _id: ObjectId = field(factory=ObjectId)
-    guild_id: int
+    _v: int = field(default=UNSAVED_SENTINEL)
+    _created_utc: dt.datetime | None = field(default=None)
+    _modified_utc: dt.datetime | None = field(default=None)
 
     @property
     def id(self) -> ObjectId:
         return self._id
 
+    @property
+    def db_version(self) -> int:
+        return self._v
+
+    @property
+    def created_date_utc(self) -> dt.datetime:
+        if not self._created_utc:
+            raise ValueError("Created date not set - has the document been saved?")
+        return self._created_utc
+
+    @property
+    def modified_date_utc(self) -> dt.datetime:
+        if not self._modified_utc:
+            raise ValueError("Modified date not set - has the document been saved?")
+        return self._modified_utc
+
 
 @define(kw_only=True)
-class GuildServer(GuildDbModel):
+class GuildServer(DbModel):
+    guild_id: int
     label: str = field(validator=[validators.min_len(1), validators.max_len(10)])
     name: str = field(validator=[validators.min_len(1), validators.max_len(100)])
     crcon_details: ServerConnectionDetails
-    created_date_utc: dt.datetime = field(validator=[utils_validators.is_utc()])
+    weighting_parameters: WeightingParameters | None = field(default=None)
 
 
 @define(kw_only=True)
-class GuildPlayerGroup(GuildDbModel):
+class GuildPlayerGroup(DbModel):
+    guild_id: int
     label: str = field(validator=[validators.min_len(1), validators.max_len(10)])
     selector: str = field(validator=[validators.min_len(1), validators.max_len(100)])
-    created_date_utc: dt.datetime = field(validator=[utils_validators.is_utc()])
-
