@@ -12,7 +12,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from ..app_config import AppConfig
 from ..exceptions import ConcurrencyError, DatastoreError, DuplicateKeyError
 from ..models import UNSAVED_SENTINEL, DbModel, GuildPlayerGroup, GuildServer
-from .converters import make_db_converter
+from .cattrs_helpers import make_db_converter
 
 
 class PolebotDatabase:

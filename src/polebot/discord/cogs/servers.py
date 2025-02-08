@@ -10,7 +10,7 @@ from crcon import ApiClientError, ServerConnectionDetails
 from polebot.composition_root import create_api_client
 from polebot.exceptions import DatastoreError
 from polebot.models import GuildServer
-from polebot.services import converters
+from polebot.services import cattrs_helpers
 from polebot.services.polebot_database import PolebotDatabase
 from utils import is_absolute
 
@@ -100,7 +100,7 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
     def __init__(self, bot: DiscordBot, db: PolebotDatabase) -> None:
         self.bot = bot
         self.db = db
-        self._converter = converters.make_params_converter()
+        self._converter = cattrs_helpers.make_params_converter()
 
     @app_commands.command(name="list", description="List your servers")
     @app_commands.guild_only()

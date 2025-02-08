@@ -11,7 +11,7 @@ from bson import ObjectId
 from crcon.server_connection_details import ServerConnectionDetails
 from polebot.app_config import AppConfig
 
-from .services import converters
+from .services import cattrs_helpers
 
 _logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ class ServerParameters:
 
 def get_server_params(app_cfg: AppConfig) -> ServerParameters:
     """Get the server configuration from the configuration directory."""
-    params_converter = converters.make_params_converter()
+    params_converter = cattrs_helpers.make_params_converter()
     config_dir = Path(app_cfg.config_dir)
     if not config_dir.is_absolute():
         config_dir = Path(__file__).parent / config_dir

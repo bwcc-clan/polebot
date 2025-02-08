@@ -6,7 +6,7 @@ from attrs import define
 from crcon.api_models import Layer
 from polebot.models import WeightingParameters
 
-from .. import converters
+from .. import cattrs_helpers
 
 
 @define(kw_only=True)
@@ -25,7 +25,7 @@ def get_weighting_dataframes(weighting_params: WeightingParameters) -> Weighting
     Returns:
         ConfigData: An object that contains the config dataframes.
     """
-    json_converter = converters.make_params_converter()
+    json_converter = cattrs_helpers.make_params_converter()
     config = json_converter.unstructure(weighting_params)
 
     df_map_groups = (
@@ -82,7 +82,7 @@ def get_layer_dataframes(layers: list[Layer]) -> LayerData:
     Returns:
         LayerData: An object containing dataframes that represent the layers for different game modes.
     """
-    json_converter = converters.make_json_converter()
+    json_converter = cattrs_helpers.make_json_converter()
     l2 = json_converter.unstructure(layers)
 
     df_maps = pd.json_normalize(

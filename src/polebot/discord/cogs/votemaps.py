@@ -7,7 +7,7 @@ from discord.ext import commands
 
 from polebot.exceptions import DatastoreError
 from polebot.models import GuildServer, WeightingParameters
-from polebot.services import converters
+from polebot.services import cattrs_helpers
 from polebot.services.polebot_database import PolebotDatabase
 
 from ..discord_bot import DiscordBot
@@ -25,7 +25,7 @@ class Votemaps(commands.GroupCog, name="votemaps", description="Manage the votem
     def __init__(self, bot: DiscordBot, db: PolebotDatabase) -> None:
         self.bot = bot
         self.db = db
-        self._converter = converters.make_params_converter()
+        self._converter = cattrs_helpers.make_params_converter()
 
     async def _autocomplete_servers(self, interaction: Interaction, current: str) -> list[app_commands.Choice[str]]:
         return await get_autocomplete_servers(self.db, interaction, current)

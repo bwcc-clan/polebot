@@ -13,7 +13,7 @@ from polebot.models import (
     ServerParameters,
     WeightingParameters,
 )
-from polebot.services import converters
+from polebot.services import cattrs_helpers
 from polebot.services.map_selector.data_loader import get_layer_dataframes, get_weighting_dataframes
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
@@ -76,7 +76,7 @@ def describe_get_map_dataframe():
     def describe_loads_dataframes():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.make_params_converter()
+            return cattrs_helpers.make_params_converter()
 
         @pytest.fixture
         def contents() -> Any:

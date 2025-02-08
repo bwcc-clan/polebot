@@ -13,7 +13,7 @@ from testutils import support_files_dir
 from yarl import URL
 
 import crcon.converters
-import polebot.services.converters as converters
+import polebot.services.cattrs_helpers as cattrs_helpers
 from crcon.api_models import (
     ApiResult,
     ApiResultWithArgs,
@@ -38,7 +38,7 @@ def describe_structure():
     def describe_with_simple_result():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.make_params_converter()
+            return cattrs_helpers.make_params_converter()
 
         def success_result(converter: JsonConverter):
             json_content = """
@@ -209,7 +209,7 @@ def describe_structure():
 def describe_params_converter():
     @pytest.fixture
     def converter() -> JsonConverter:
-        return converters.make_params_converter()
+        return cattrs_helpers.make_params_converter()
 
     def describe_with_server_params():
         @pytest.fixture
@@ -241,7 +241,7 @@ def describe_params_converter():
 def describe_db_converter():
     @pytest.fixture
     def converter() -> BsonConverter:
-        return converters.make_db_converter()
+        return cattrs_helpers.make_db_converter()
 
     def describe_with_guild_server():
 
