@@ -1,4 +1,5 @@
 import inspect
+import json
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, NoReturn
 
@@ -8,6 +9,8 @@ from discord.ext import commands
 from discord.utils import MISSING
 from typing_extensions import TypeVar
 
+from polebot.orchestrator import Orchestrator
+from utils import JSON, parse_content_type
 from utils.cachetools import ttl_cache
 
 if TYPE_CHECKING:
@@ -177,3 +180,47 @@ def bot_has_permissions(**perms: bool) -> Callable[..., MyCommand]:
         return command
 
     return wrapped
+
+
+async def parse_attachment_as_json(file: discord.Attachment) -> JSON:
+    if not file.content_type:
+        raise ValueError("No content type provided for file")
+    content_type = parse_content_type(file.content_type)
+    if content_type[0] != "application/json":
+        raise ValueError("File must be a JSON file")
+    encoding: str = content_type[1].get("charset", "utf-8")
+    file_data = await file.read()
+    try:
+        decoded_data = file_data.decode(encoding)
+        parsed_json: JSON = json.loads(decoded_data)
+        return parsed_json
+    except (json.JSONDecodeError, UnicodeDecodeError) as ex:
+        raise ValueError(f"Error parsing JSON file: {ex}") from ex
+
+
+async def get_attachment_as_text(file: discord.Attachment) -> str:
+    if not file.content_type:
+        encoding: str = "utf-8"
+    else:
+        content_type = parse_content_type(file.content_type)
+        encoding = content_type[1].get("charset", "utf-8")
+    file_data = await file.read()
+    return file_data.decode(encoding)
+
+
+async def get_autocomplete_servers(
+    orchestrator: Orchestrator,
+    interaction: Interaction,
+    current: str,
+) -> list[app_commands.Choice[str]]:
+    if interaction.guild_id is None:
+        return []
+
+    await interaction.response.defer()
+    guild_servers = await orchestrator.get_guild_servers(interaction.guild_id)
+    choices = [
+        app_commands.Choice(name=server.name, value=server.label)
+        for server in guild_servers
+        if current.lower() in server.name.lower() and server.id
+    ]
+    return choices

@@ -6,14 +6,12 @@ from cattrs.preconf.json import JsonConverter
 from testutils import support_files_dir
 
 from crcon.api_models import ApiResult, Layer
-from crcon.server_connection_details import ServerConnectionDetails
 from polebot.models import (
     EnvironmentGroup,
     MapGroup,
-    ServerParameters,
     WeightingParameters,
 )
-from polebot.services import converters
+from polebot.services import cattrs_helpers
 from polebot.services.map_selector.data_loader import get_layer_dataframes, get_weighting_dataframes
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
@@ -21,9 +19,8 @@ SUPPORT_FILES_DIR = support_files_dir(__file__)
 def describe_get_params_dataframes():
     def describe_loads_dataframes():
         @pytest.fixture
-        def server_params() -> ServerParameters:
-            crcon_details = ServerConnectionDetails(api_url="https://hll.example.com", api_key="test_key")
-            weighting_params = WeightingParameters(
+        def weighting_params() -> WeightingParameters:
+            return WeightingParameters(
                 groups={
                     "Top": MapGroup(
                         weight=100,
@@ -41,10 +38,9 @@ def describe_get_params_dataframes():
                     "Night": EnvironmentGroup(weight=50, repeat_decay=0.1, environments=["night"]),
                 },
             )
-            return ServerParameters(server_name="Test", crcon_details=crcon_details, weighting_params=weighting_params)
 
-        def df_map_groups_contents_are_mapped(server_params: ServerParameters):
-            data = get_weighting_dataframes(server_params.weighting_params)
+        def df_map_groups_contents_are_mapped(weighting_params: WeightingParameters):
+            data = get_weighting_dataframes(weighting_params)
 
             assert data.df_map_groups.shape == (8, 3)
             expected_columns = {"map_group", "map_weight", "map_repeat_decay"}
@@ -60,8 +56,8 @@ def describe_get_params_dataframes():
                 ("hill400", "Mid", 80, 0.5),
             }
 
-        def df_environments_contents_are_mapped(server_params: ServerParameters):
-            data = get_weighting_dataframes(server_params.weighting_params)
+        def df_environments_contents_are_mapped(weighting_params: WeightingParameters):
+            data = get_weighting_dataframes(weighting_params)
 
             assert data.df_environments.shape == (3, 3)
             expected_columns = {"environment_category", "environment_weight", "environment_repeat_decay"}
@@ -76,7 +72,7 @@ def describe_get_map_dataframe():
     def describe_loads_dataframes():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.make_params_converter()
+            return cattrs_helpers.make_params_converter()
 
         @pytest.fixture
         def contents() -> Any:

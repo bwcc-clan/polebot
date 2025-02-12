@@ -8,6 +8,8 @@ from collections.abc import Awaitable, Callable, Generator
 from typing import Any, TypeGuard, TypeVar, overload
 from urllib.parse import urlparse
 
+from .misc import parse_content_type
+
 BACKOFF_INITIAL_DELAY = float(os.environ.get("LOGSTREAM_BACKOFF_INITIAL_DELAY", "5"))
 BACKOFF_MIN_DELAY = float(os.environ.get("LOGSTREAM_BACKOFF_MIN_DELAY", "3.1"))
 BACKOFF_MAX_DELAY = float(os.environ.get("LOGSTREAM_BACKOFF_MAX_DELAY", "90.0"))
@@ -94,4 +96,7 @@ def is_async_callable(obj: Any) -> bool:
 def is_absolute(url: str) -> bool:
     return bool(urlparse(url).netloc)
 
-__all__ = ["backoff", "expand_environment", "is_async_callable", "is_absolute"]
+type JSON = dict[str, "JSON"] | list["JSON"] | str | int | float | bool | None
+
+
+__all__ = ["JSON", "backoff", "expand_environment", "is_async_callable", "is_absolute", "parse_content_type"]

@@ -1,4 +1,5 @@
 import asyncio
+import datetime as dt
 import json
 from unittest.mock import AsyncMock
 
@@ -6,12 +7,18 @@ import pytest
 from testutils import support_files_dir
 
 from crcon import ApiClient, converters
-from crcon.api_models import ApiResult, Layer, ServerStatus, VoteMapUserConfig
-from crcon.server_connection_details import ServerConnectionDetails
+from crcon.api_models import (
+    ApiResult,
+    Layer,
+    LogMessageType,
+    LogStreamObject,
+    ServerStatus,
+    StructuredLogLineWithMetaData,
+    VoteMapUserConfig,
+)
 from polebot.models import (
     EnvironmentGroup,
     MapGroup,
-    ServerParameters,
     WeightingParameters,
 )
 from polebot.services.votemap_processor import VotemapProcessor
@@ -54,9 +61,8 @@ def queue():
 
 
 @pytest.fixture
-def standard_server_params() -> ServerParameters:
-    crcon_details = ServerConnectionDetails(api_url="https://hll.example.com", api_key="dummy")
-    weighting_params = WeightingParameters(
+def standard_weighting_params() -> WeightingParameters:
+    return WeightingParameters(
         groups={
             "Top": MapGroup(
                 weight=100,
@@ -74,7 +80,6 @@ def standard_server_params() -> ServerParameters:
             "Night": EnvironmentGroup(weight=50, repeat_decay=0.1, environments=["night"]),
         },
     )
-    return ServerParameters(server_name="Test", crcon_details=crcon_details, weighting_params=weighting_params)
 
 
 @pytest.fixture
@@ -90,10 +95,13 @@ def standard_api_client(
 ) -> AsyncMock:
     return mock_api_client(standard_status, standard_layers, standard_votemap_config)
 
+
 def describe_process_map_started():
     @pytest.mark.asyncio
     async def process_map_started_updates_server(
-        standard_server_params: ServerParameters, standard_status: ServerStatus, standard_layers: list[Layer],
+        standard_weighting_params: WeightingParameters,
+        standard_status: ServerStatus,
+        standard_layers: list[Layer],
     ):
         # *** ARRANGE ***
         event_loop = asyncio.get_event_loop()
@@ -105,7 +113,9 @@ def describe_process_map_started():
         queue = asyncio.Queue()
         api_client = mock_api_client(standard_status, standard_layers, VoteMapUserConfig())
         api_client.set_votemap_whitelist.side_effect = set_votemap_whitelist
-        sut = VotemapProcessor(standard_server_params, queue, api_client, event_loop)
+        sut = VotemapProcessor(queue, api_client, event_loop)
+        sut.weighting_params = standard_weighting_params
+        sut.enabled = True
 
         # *** ACT ***
         await sut._process_map_started()
@@ -118,20 +128,226 @@ def describe_process_map_started():
         assert api_client.reset_votemap_state.call_count == 1
 
 
-def describe_process_map_ended():
+def when_instance_is_created():
     @pytest.mark.asyncio
-    async def process_map_ended_saves_history(
-        standard_server_params: ServerParameters, standard_status: ServerStatus, standard_layers: list[Layer],
+    async def can_be_created_with_queue(
+        standard_api_client: ApiClient,
+        standard_status: ServerStatus,
+        standard_layers: list[Layer],
     ):
         # *** ARRANGE ***
         event_loop = asyncio.get_event_loop()
         queue = asyncio.Queue()
         api_client = mock_api_client(standard_status, standard_layers, VoteMapUserConfig())
-        sut = VotemapProcessor(standard_server_params, queue, api_client, event_loop)
-        sut._layer_history.appendleft("utahbeach_warfare")
 
         # *** ACT ***
-        await sut._process_map_ended()
+        sut = VotemapProcessor(queue, api_client, event_loop)
+
+        # *** ASSERT ***
+        assert sut.enabled is False
+
+
+def describe_setting_enabled_flag():
+    def when_weighting_parameters_set():
+        @pytest.mark.asyncio
+        async def can_set_enabled_flag(
+            standard_weighting_params: WeightingParameters,
+            standard_status: ServerStatus,
+            standard_layers: list[Layer],
+        ):
+            # *** ARRANGE ***
+            event_loop = asyncio.get_event_loop()
+            queue = asyncio.Queue()
+            api_client = mock_api_client(standard_status, standard_layers, VoteMapUserConfig())
+            sut = VotemapProcessor(queue, api_client, event_loop)
+            sut.weighting_params = standard_weighting_params
+
+            # *** ACT ***
+            sut.enabled = True
+
+            # *** ASSERT ***
+            assert sut.enabled is True
+
+        @pytest.mark.asyncio
+        async def can_clear_enabled_flag(
+            standard_weighting_params: WeightingParameters,
+            standard_status: ServerStatus,
+            standard_layers: list[Layer],
+        ):
+            # *** ARRANGE ***
+            event_loop = asyncio.get_event_loop()
+            queue = asyncio.Queue()
+            api_client = mock_api_client(standard_status, standard_layers, VoteMapUserConfig())
+            sut = VotemapProcessor(queue, api_client, event_loop)
+            sut.weighting_params = standard_weighting_params
+            sut.enabled = True
+
+            # *** ACT ***
+            sut.enabled = False
+
+            # *** ASSERT ***
+            assert sut.enabled is False
+
+    def when_weighting_parameters_not_set():
+        @pytest.mark.asyncio
+        async def setting_enabled_flag_raises(
+            standard_weighting_params: WeightingParameters,
+            standard_status: ServerStatus,
+            standard_layers: list[Layer],
+        ):
+            # *** ARRANGE ***
+            event_loop = asyncio.get_event_loop()
+            queue = asyncio.Queue()
+            api_client = mock_api_client(standard_status, standard_layers, VoteMapUserConfig())
+            sut = VotemapProcessor(queue, api_client, event_loop)
+
+            # *** ACT ***
+            with pytest.raises(ValueError) as exc_info:
+                sut.enabled = True
+
+            # *** ASSERT ***
+            assert str(exc_info.value) == "Cannot enable votemap processor without configuring weighting parameters"
+
+
+def when_receiving_map_started_message():
+    @pytest.mark.asyncio
+    async def message_ignored_if_not_enabled(
+        standard_weighting_params: WeightingParameters,
+        standard_status: ServerStatus,
+        standard_layers: list[Layer],
+    ):
+        # *** ARRANGE ***
+        event_loop = asyncio.get_event_loop()
+        whitelists: list[list[str]] = []
+
+        def set_votemap_whitelist(whitelist: list[str]) -> None:
+            whitelists.append(whitelist)
+
+        queue = asyncio.Queue[LogStreamObject]()
+        api_client = mock_api_client(standard_status, standard_layers, VoteMapUserConfig())
+        api_client.set_votemap_whitelist.side_effect = set_votemap_whitelist
+        sut = VotemapProcessor(queue, api_client, event_loop)
+        map_started = create_log_stream_object(LogMessageType.match_start)
+
+        # *** ACT ***
+        async with asyncio.TaskGroup() as tg:
+            task = tg.create_task(sut.run())
+            await queue.put(map_started)
+            await asyncio.sleep(2.0)
+            queue.shutdown()
+            await task
+
+        # *** ASSERT ***
+        assert len(whitelists) == 0
+        assert api_client.set_votemap_whitelist.call_count == 0
+        assert api_client.reset_votemap_state.call_count == 0
+
+    @pytest.mark.asyncio
+    async def message_processed_if_enabled(
+        standard_weighting_params: WeightingParameters,
+        standard_status: ServerStatus,
+        standard_layers: list[Layer],
+    ):
+        # *** ARRANGE ***
+        event_loop = asyncio.get_event_loop()
+        whitelists: list[list[str]] = []
+
+        def set_votemap_whitelist(whitelist: list[str]) -> None:
+            whitelists.append(whitelist)
+
+        queue = asyncio.Queue[LogStreamObject]()
+
+        def cancel_task():
+            queue.shutdown()
+
+        api_client = mock_api_client(standard_status, standard_layers, VoteMapUserConfig())
+        api_client.set_votemap_whitelist.side_effect = set_votemap_whitelist
+        api_client.reset_votemap_state.side_effect = cancel_task
+
+        sut = VotemapProcessor(queue, api_client, event_loop)
+        sut.weighting_params = standard_weighting_params
+        sut.enabled = True
+
+        map_started = create_log_stream_object(LogMessageType.match_start)
+
+        # *** ACT ***
+        async with asyncio.TaskGroup() as tg:
+            task = tg.create_task(sut.run())
+            await queue.put(map_started)
+            await asyncio.sleep(0.1)
+            await task
+
+        # *** ASSERT ***
+        assert len(whitelists) == 2
+        assert len(whitelists[0]) == 7
+        assert len(whitelists[1]) == 90
+        assert api_client.set_votemap_whitelist.call_count == 2
+        assert api_client.reset_votemap_state.call_count == 1
+
+
+def when_receiving_map_ended_message():
+    @pytest.mark.asyncio
+    async def message_ignored_if_not_enabled(
+        standard_weighting_params: WeightingParameters,
+        standard_status: ServerStatus,
+        standard_layers: list[Layer],
+    ):
+        # *** ARRANGE ***
+        event_loop = asyncio.get_event_loop()
+        whitelists: list[list[str]] = []
+
+        def set_votemap_whitelist(whitelist: list[str]) -> None:
+            whitelists.append(whitelist)
+
+        queue = asyncio.Queue[LogStreamObject]()
+        api_client = mock_api_client(standard_status, standard_layers, VoteMapUserConfig())
+        api_client.set_votemap_whitelist.side_effect = set_votemap_whitelist
+        sut = VotemapProcessor(queue, api_client, event_loop)
+        map_ended = create_log_stream_object(LogMessageType.match_end)
+
+        # *** ACT ***
+        async with asyncio.TaskGroup() as tg:
+            task = tg.create_task(sut.run())
+            await queue.put(map_ended)
+            await asyncio.sleep(2.0)
+            queue.shutdown()
+            await task
+
+        # *** ASSERT ***
+        assert len(whitelists) == 0
+        assert api_client.set_votemap_whitelist.call_count == 0
+        assert api_client.reset_votemap_state.call_count == 0
+
+    @pytest.mark.asyncio
+    async def message_processed_if_enabled(
+        standard_weighting_params: WeightingParameters,
+        standard_status: ServerStatus,
+        standard_layers: list[Layer],
+    ):
+        # *** ARRANGE ***
+        event_loop = asyncio.get_event_loop()
+
+        queue = asyncio.Queue[LogStreamObject]()
+
+        def cancel_task():
+            queue.shutdown()
+
+        api_client = mock_api_client(standard_status, standard_layers, VoteMapUserConfig())
+        sut = VotemapProcessor(queue, api_client, event_loop)
+        sut._layer_history.appendleft("utahbeach_warfare")
+
+        map_ended = create_log_stream_object(LogMessageType.match_end)
+
+        sut.weighting_params = standard_weighting_params
+        sut.enabled = True
+
+        # *** ACT ***
+        async with asyncio.TaskGroup() as tg:
+            task = tg.create_task(sut.run())
+            await queue.put(map_ended)
+            await asyncio.sleep(0.1)
+            queue.shutdown()
+            await task
 
         # *** ASSERT ***
         assert len(sut._layer_history) == 2
@@ -152,3 +368,25 @@ def mock_api_client(
     client.set_votemap_whitelist.return_value = None
     client.reset_votemap_state.return_value = None
     return client
+
+
+def create_log_stream_object(action: LogMessageType) -> LogStreamObject:
+    return LogStreamObject(
+        id="1",
+        log=StructuredLogLineWithMetaData(
+            message="Map started",
+            version=1,
+            timestamp_ms=0,
+            event_time=dt.datetime.now(dt.UTC),
+            raw="",
+            relative_time_ms=0,
+            line_without_time="",
+            action=action,
+            player_name_1=None,
+            player_id_1=None,
+            player_name_2=None,
+            player_id_2=None,
+            weapon=None,
+            sub_content=None,
+        ),
+    )

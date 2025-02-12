@@ -18,12 +18,22 @@ class DuplicateKeyError(DatastoreError):
     """The exception raised when a data store operation would result in a unique key index violation."""
 
     def __init__(self) -> None:
-        """Creates a new instance of `DuplicateKeyError`.
+        """Creates a new instance of `DuplicateKeyError`."""
+        self.message = "Key already exists"
+        super().__init__(self.message)
+
+
+class ConcurrencyError(DatastoreError):
+    """The exception raised when an optimistic concurrency violation occurs during a database operation."""
+
+    def __init__(self, db_version: int) -> None:
+        """Creates a new instance of `ConcurrencyError`.
 
         Args:
-            message (str): Indicates the error that occurred.
+            db_version (int): Indicates the document version that failed to save.
         """
-        self.message = "Key already exists"
+        self.message = "Concurrency error: document has been updated since last read"
+        self.db_version = db_version
         super().__init__(self.message)
 
 

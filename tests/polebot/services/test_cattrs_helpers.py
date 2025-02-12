@@ -13,7 +13,7 @@ from testutils import support_files_dir
 from yarl import URL
 
 import crcon.converters
-import polebot.services.converters as converters
+import polebot.services.cattrs_helpers as cattrs_helpers
 from crcon.api_models import (
     ApiResult,
     ApiResultWithArgs,
@@ -29,7 +29,7 @@ from crcon.api_models import (
     VoteMapUserConfig,
 )
 from crcon.server_connection_details import ServerConnectionDetails
-from polebot.models import GuildServer, ServerParameters
+from polebot.models import GuildServer, WeightingParameters
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
 
@@ -38,7 +38,7 @@ def describe_structure():
     def describe_with_simple_result():
         @pytest.fixture
         def converter() -> JsonConverter:
-            return converters.make_params_converter()
+            return cattrs_helpers.make_params_converter()
 
         def success_result(converter: JsonConverter):
             json_content = """
@@ -209,39 +209,32 @@ def describe_structure():
 def describe_params_converter():
     @pytest.fixture
     def converter() -> JsonConverter:
-        return converters.make_params_converter()
+        return cattrs_helpers.make_params_converter()
 
     def describe_with_server_params():
         @pytest.fixture
         def contents() -> Any:
-            filepath = SUPPORT_FILES_DIR.joinpath("server_params.json")
+            filepath = SUPPORT_FILES_DIR.joinpath("weighting_params.json")
             with filepath.open() as f:
                 contents = json.load(f)
             return contents
 
         def can_read_config(converter: JsonConverter, contents: Any):
             os.environ["SOME_ENV_VAR"] = "magic_value"
-            config = converter.structure(contents, ServerParameters)
+            config = converter.structure(contents, WeightingParameters)
             assert config is not None
-            assert config.server_name == "My Test Server"
-            assert config.crcon_details is not None
-            assert config.crcon_details.api_url == URL("https://hll.example.com")
-            assert config.crcon_details.api_key == "magic_value"
-            assert config.crcon_details.websocket_url.scheme == "wss"
-            assert config.crcon_details.websocket_url.host == config.crcon_details.api_url.host
-            assert config.weighting_params is not None
 
-            assert len(config.weighting_params.groups) == 3
-            assert "Boost" in config.weighting_params.groups
-            boost1 = config.weighting_params.groups["Boost"]
+            assert len(config.groups) == 3
+            assert "Boost" in config.groups
+            boost1 = config.groups["Boost"]
             assert boost1.weight == 80
             assert boost1.repeat_decay == 0.6
-            assert len(config.weighting_params.environments) == 3
+            assert len(config.environments) == 3
 
 def describe_db_converter():
     @pytest.fixture
     def converter() -> BsonConverter:
-        return converters.make_db_converter()
+        return cattrs_helpers.make_db_converter()
 
     def describe_with_guild_server():
 
@@ -252,7 +245,6 @@ def describe_db_converter():
                 label="dummy",
                 name="server_name",
                 crcon_details=ServerConnectionDetails("https://server.example.com", "some key"),
-                created_date_utc=dt.datetime(2025, 1, 15, 15, 43, 21, 234, dt.UTC),
             )
 
             # ***** ACT *****
@@ -264,7 +256,6 @@ def describe_db_converter():
             assert result["name"] == "server_name"
             assert isinstance(result["_id"], ObjectId)
             assert result["crcon_details"]["api_url"] == "https://server.example.com"
-            assert result["created_date_utc"] == dt.datetime(2025, 1, 15, 15, 43, 21, 234, dt.UTC)
 
         def can_structure(converter: Converter):
             # ***** ARRANGE *****
@@ -274,7 +265,8 @@ def describe_db_converter():
                 "label": "the-label",
                 "name": "server_name",
                 "crcon_details": {"api_url": "https://server.example.com", "api_key": "some key"},
-                "created_date_utc": dt.datetime(2025, 1, 15, 15, 43, 21, 234, dt.UTC),
+                "_created_utc": dt.datetime(2025, 1, 15, 15, 43, 21, 234, dt.UTC),
+                "_updated_utc": dt.datetime(2025, 1, 15, 15, 43, 21, 234, dt.UTC),
             }
 
             # ***** ACT *****

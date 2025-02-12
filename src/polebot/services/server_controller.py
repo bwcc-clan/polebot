@@ -11,9 +11,9 @@ from typing import NoReturn, Self
 
 from crcon import LogStreamClient
 from crcon.api_models import LogMessageType, LogStreamObject
+from polebot.models import WeightingParameters
 
 from ..exceptions import TerminateTaskGroup
-from ..models import ServerParameters
 from .votemap_processor import VotemapProcessor
 
 logger = logging.getLogger(__name__)
@@ -26,7 +26,6 @@ class ServerController(contextlib.AbstractAsyncContextManager):
     """Responsible for controlling a single CRCON server instance."""
     def __init__(
         self,
-        server_params: ServerParameters,
         loop: asyncio.AbstractEventLoop,
         log_stream_client: LogStreamClient,
         votemap_processor: VotemapProcessor,
@@ -35,13 +34,11 @@ class ServerController(contextlib.AbstractAsyncContextManager):
         """Initialise the server manager.
 
         Args:
-            server_params (ServerParameters): The server parameters.
             loop (asyncio.AbstractEventLoop): The event loop to use for async operations.
             log_stream_client (LogStreamClient): The log stream client to use for log message retrieval.
             votemap_processor (VotemapProcessor): The votemap manager to use for votemap selection.
             stop_event (asyncio.Event | None, optional): If specified, an event that will stop the instance when fired.
         """
-        self._server_params = server_params
         self._loop = loop
         self._stop_event = stop_event
         self._queue = asyncio.Queue[LogStreamObject](_QUEUE_SIZE)
@@ -50,6 +47,22 @@ class ServerController(contextlib.AbstractAsyncContextManager):
 
         self._task_group: asyncio.TaskGroup | None = None
         self._exit_stack = contextlib.AsyncExitStack()
+
+    @property
+    def votemap_enabled(self) -> bool:
+        return self._votemap_processor.enabled
+
+    @votemap_enabled.setter
+    def votemap_enabled(self, value: bool) -> None:
+        self._votemap_processor.enabled = value
+
+    @property
+    def weighting_parameters(self) -> WeightingParameters | None:
+        return self._votemap_processor._weighting_parameters
+
+    @weighting_parameters.setter
+    def weighting_parameters(self, value: WeightingParameters | None) -> None:
+        self._votemap_processor._weighting_parameters = value
 
     async def __aenter__(self) -> Self:
         """This method is a part of the context manager protocol. It is called when entering the context manager."""
@@ -92,7 +105,7 @@ class ServerController(contextlib.AbstractAsyncContextManager):
                 logger.exception("Task %s failed", task.get_name(), exc_info=task.exception())
 
     def stop(self) -> None:
-        """Stop the server manager."""
+        """Stop the server controller."""
         self._stop_internal(True)
 
     def _stop_internal(self, stop_monitor: bool) -> None:
