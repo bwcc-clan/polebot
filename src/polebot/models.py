@@ -1,17 +1,12 @@
 """Configuration classes for the application."""
 
 import datetime as dt
-import json
 import logging
-from pathlib import Path
 
 from attrs import define, field, frozen, validators
 from bson import ObjectId
 
 from crcon.server_connection_details import ServerConnectionDetails
-from polebot.app_config import AppConfig
-
-from .services import cattrs_helpers
 
 _logger = logging.getLogger(__name__)
 
@@ -40,38 +35,6 @@ class WeightingParameters:
 
     groups: dict[str, MapGroup]
     environments: dict[str, EnvironmentGroup]
-
-
-@frozen(kw_only=True)
-class ServerParameters:
-    """Parameters for a CRCON server instance."""
-
-    server_name: str
-    crcon_details: ServerConnectionDetails
-    weighting_params: WeightingParameters
-
-
-def get_server_params(app_cfg: AppConfig) -> ServerParameters:
-    """Get the server configuration from the configuration directory."""
-    params_converter = cattrs_helpers.make_params_converter()
-    config_dir = Path(app_cfg.config_dir)
-    if not config_dir.is_absolute():
-        config_dir = Path(__file__).parent / config_dir
-
-    _logger.debug("Looking for server config files in %s", str(config_dir))
-    for file in config_dir.glob("*.json"):
-        _logger.debug("Loading server config file %s", str(file))
-        server_params: ServerParameters | None = None
-        try:
-            contents = file.read_text()
-            json_contents = json.loads(contents)
-            server_params = params_converter.structure(json_contents, ServerParameters)
-        except Exception as ex:  # noqa: BLE001
-            _logger.warning("Unable to load file %s as a server config file", str(file), exc_info=ex)
-        if server_params:
-            return server_params
-
-    raise RuntimeError(f"No valid configuration files found in '{config_dir}'")
 
 
 UNSAVED_SENTINEL = -1
@@ -111,6 +74,7 @@ class GuildServer(DbModel):
     label: str = field(validator=[validators.min_len(1), validators.max_len(10)])
     name: str = field(validator=[validators.min_len(1), validators.max_len(100)])
     crcon_details: ServerConnectionDetails
+    enable_votemap: bool = field(default=False)
     weighting_parameters: WeightingParameters | None = field(default=None)
 
 

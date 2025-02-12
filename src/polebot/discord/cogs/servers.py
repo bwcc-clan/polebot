@@ -8,13 +8,12 @@ from discord.ext import commands
 
 from crcon import ApiClientError, ServerConnectionDetails
 from polebot.composition_root import create_api_client
+from polebot.discord.bot import Polebot
 from polebot.exceptions import DatastoreError
-from polebot.models import GuildServer
+from polebot.orchestrator import OrchestrationError
 from polebot.services import cattrs_helpers
-from polebot.services.polebot_database import PolebotDatabase
 from utils import is_absolute
 
-from ..discord_bot import DiscordBot
 from ..discord_utils import (
     get_autocomplete_servers,
     get_command_mention,
@@ -97,9 +96,13 @@ class AddServerModal(discord.ui.Modal, title="Add CRCON Server"):
 
 @app_commands.guild_only()
 class Servers(commands.GroupCog, name="servers", description="Manage your CRCON servers"):
-    def __init__(self, bot: DiscordBot, db: PolebotDatabase) -> None:
+    def __init__(
+        self,
+        bot: Polebot,
+    ) -> None:
         self.bot = bot
-        self.db = db
+        self._orchestrator = self.bot.orchestrator
+
         self._converter = cattrs_helpers.make_params_converter()
 
     @app_commands.command(name="list", description="List your servers")
@@ -112,7 +115,7 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
             return
 
         try:
-            guild_servers = await self.db.fetch_all(GuildServer, interaction.guild_id, sort="label")
+            guild_servers = await self._orchestrator.get_guild_servers(interaction.guild_id)
             if len(guild_servers):
                 content = ""
                 for server in sorted(guild_servers, key=lambda s: s.label):
@@ -154,26 +157,13 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
             return
 
         crcon_details = ServerConnectionDetails(modal.result.server_props.api_url, modal.result.server_props.api_key)
-        result = await self._attempt_connect_to_server(crcon_details)
-
-        if not result[0]:
-            content = f"Unable to connect to the server with the details provided: {result[1]}"
-            embed = get_error_embed(title="Error", description=to_discord_markdown(content))
-            await interaction.followup.send(embed=embed, ephemeral=True)
-            return
-
-        server_name = result[1]
-        guild_server = GuildServer(
-            guild_id=interaction.guild_id,
-            label=modal.result.server_props.label,
-            name=server_name,
-            crcon_details=crcon_details,
-        )
         try:
-            await self.db.insert(guild_server)
-        except DatastoreError as ex:
+            server_name = await self._orchestrator.add_guild_server(
+                interaction.guild_id, modal.result.server_props.label, crcon_details,
+            )
+        except OrchestrationError as ex:
             self.bot.logger.warning("Unable to add server", exc_info=ex)
-            content = f"Unable to add server {server_name}."
+            content = f"Unable to add server at {modal.result.server_props.api_url}."
             embed = get_error_embed(title="Error", description=to_discord_markdown(content))
             await interaction.followup.send(embed=embed, ephemeral=True)
         else:
@@ -182,7 +172,7 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
             await interaction.followup.send(embed=embed)
 
     async def _autocomplete_servers(self, interaction: Interaction, current: str) -> list[app_commands.Choice[str]]:
-        return await get_autocomplete_servers(self.db, interaction, current)
+        return await get_autocomplete_servers(self._orchestrator, interaction, current)
 
     @app_commands.command(name="remove", description="Remove a server")
     @app_commands.guild_only()
@@ -192,27 +182,19 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
             self.bot.logger.error("add_server interaction has no guild_id")
             return
 
-        # If server contains a valid label then the user selected from the choices. If not, error
         await interaction.response.defer()
-        guild_server = await self.db.find_one(
-            GuildServer,
-            guild_id=interaction.guild_id,
-            attr_name="label",
-            attr_value=server,
-        )
-        if guild_server:
-            await self.db.delete(GuildServer, guild_server.id)
-            self.bot.logger.info("Server %s deleted", server)
-            content = f"Server {guild_server.name} was removed."
+        try:
+            await self._orchestrator.remove_guild_server(interaction.guild_id, server)
+        except OrchestrationError as ex:
+            self.bot.logger.error("Error removing server", exc_info=ex)
+            content = f"Unable to remove server {server}."
+            embed = get_error_embed(title="Error", description=to_discord_markdown(content))
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        else:
+            content = f"Server {server} was removed."
             embed = get_success_embed(title="Server removed", description=to_discord_markdown(content))
             await interaction.followup.send(embed=embed)
-        else:
-            embed = get_error_embed(
-                title="Server not found",
-                description=f"No server labelled '{server}' exists.",
-            )
-            await interaction.delete_original_response()
-            await interaction.followup.send(embed=embed, ephemeral=True)
+
 
     async def _attempt_connect_to_server(self, crcon_details: ServerConnectionDetails) -> tuple[bool, str]:
         api_client = create_api_client(self.bot.container, crcon_details)
@@ -240,7 +222,6 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
 
 async def setup(bot: commands.Bot) -> None:
     """Adds the cog to the bot."""
-    if not isinstance(bot, DiscordBot):
+    if not isinstance(bot, Polebot):
         raise TypeError("This cog is designed to be used with DiscordBot.")
-    container = bot.container
-    await bot.add_cog(Servers(bot, db=container[PolebotDatabase]))
+    await bot.add_cog(Servers(bot))

@@ -29,7 +29,7 @@ from crcon.api_models import (
     VoteMapUserConfig,
 )
 from crcon.server_connection_details import ServerConnectionDetails
-from polebot.models import GuildServer, ServerParameters
+from polebot.models import GuildServer, WeightingParameters
 
 SUPPORT_FILES_DIR = support_files_dir(__file__)
 
@@ -214,29 +214,22 @@ def describe_params_converter():
     def describe_with_server_params():
         @pytest.fixture
         def contents() -> Any:
-            filepath = SUPPORT_FILES_DIR.joinpath("server_params.json")
+            filepath = SUPPORT_FILES_DIR.joinpath("weighting_params.json")
             with filepath.open() as f:
                 contents = json.load(f)
             return contents
 
         def can_read_config(converter: JsonConverter, contents: Any):
             os.environ["SOME_ENV_VAR"] = "magic_value"
-            config = converter.structure(contents, ServerParameters)
+            config = converter.structure(contents, WeightingParameters)
             assert config is not None
-            assert config.server_name == "My Test Server"
-            assert config.crcon_details is not None
-            assert config.crcon_details.api_url == URL("https://hll.example.com")
-            assert config.crcon_details.api_key == "magic_value"
-            assert config.crcon_details.websocket_url.scheme == "wss"
-            assert config.crcon_details.websocket_url.host == config.crcon_details.api_url.host
-            assert config.weighting_params is not None
 
-            assert len(config.weighting_params.groups) == 3
-            assert "Boost" in config.weighting_params.groups
-            boost1 = config.weighting_params.groups["Boost"]
+            assert len(config.groups) == 3
+            assert "Boost" in config.groups
+            boost1 = config.groups["Boost"]
             assert boost1.weight == 80
             assert boost1.repeat_decay == 0.6
-            assert len(config.weighting_params.environments) == 3
+            assert len(config.environments) == 3
 
 def describe_db_converter():
     @pytest.fixture

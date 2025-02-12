@@ -25,13 +25,13 @@ class PolebotDatabase:
         self._converter = make_db_converter()
 
     async def initialize(self) -> None:
-        for repo in _GuildRepository.repository_map.values():
+        for repo in _EntityRepository.repository_map.values():
             for index in repo.get_indexes():
                 await self._db[repo.collection_name].create_index(index.keys, **index.props)
 
     async def insert[T: DbModel](self, obj: T) -> T:
         cls = type(obj)
-        repo_type: type[_GuildRepository[T]] | None = _GuildRepository.repository_map.get(cls, None)
+        repo_type: type[_EntityRepository[T]] | None = _EntityRepository.repository_map.get(cls, None)
         if not repo_type:
             raise RuntimeError(f"Repository not found for type {cls.__name__}")
         repo = repo_type(self._db)
@@ -39,14 +39,14 @@ class PolebotDatabase:
 
     async def update[T: DbModel](self, obj: T) -> T:
         cls = type(obj)
-        repo_type: type[_GuildRepository[T]] | None = _GuildRepository.repository_map.get(cls, None)
+        repo_type: type[_EntityRepository[T]] | None = _EntityRepository.repository_map.get(cls, None)
         if not repo_type:
             raise RuntimeError(f"Repository not found for type {cls.__name__}")
         repo = repo_type(self._db)
         return await repo.update(obj)
 
-    async def fetch_all[T: DbModel](self, cls: type[T], guild_id: int, *, sort: str | None = None) -> list[T]:
-        repo_type: type[_GuildRepository[T]] | None = _GuildRepository.repository_map.get(cls, None)
+    async def fetch_all[T: DbModel](self, cls: type[T], guild_id: int | None, *, sort: str | None = None) -> list[T]:
+        repo_type: type[_EntityRepository[T]] | None = _EntityRepository.repository_map.get(cls, None)
         if not repo_type:
             raise RuntimeError(f"Repository not found for type {cls.__name__}")
         repo = repo_type(self._db)
@@ -58,14 +58,14 @@ class PolebotDatabase:
             return docs
 
     async def find_one[T: DbModel](self, cls: type[T], guild_id: int, attr_name: str, attr_value: Any) -> T | None:  # noqa: ANN401
-        repo_type: type[_GuildRepository[T]] | None = _GuildRepository.repository_map.get(cls, None)
+        repo_type: type[_EntityRepository[T]] | None = _EntityRepository.repository_map.get(cls, None)
         if not repo_type:
             raise RuntimeError(f"Repository not found for type {cls.__name__}")
         repo = repo_type(self._db)
         return await repo.find_one(guild_id, attr_name=attr_name, attr_value=attr_value)
 
     async def delete[T: DbModel](self, cls: type[T], doc_id: ObjectId) -> None:
-        repo_type = _GuildRepository.repository_map.get(cls, None)
+        repo_type = _EntityRepository.repository_map.get(cls, None)
         if not repo_type:
             raise RuntimeError(f"Repository not found for type {cls.__name__}")
         repo = repo_type(self._db)
@@ -81,8 +81,8 @@ class IndexDefinition:
         self.props = kwargs
 
 
-class _GuildRepository[T: DbModel]:
-    repository_map: dict[type[DbModel], type["_GuildRepository"]] = {}
+class _EntityRepository[T: DbModel]:
+    repository_map: dict[type[DbModel], type["_EntityRepository"]] = {}
     model_desc: str
     collection_name: str
     model_type: type[T]
@@ -92,7 +92,7 @@ class _GuildRepository[T: DbModel]:
         cls.collection_name = collection
         new_var = cls.__orig_bases__[0]  # type: ignore[attr-defined]
         cls.model_type = get_args(new_var)[0]
-        _GuildRepository.repository_map[cls.model_type] = cls
+        _EntityRepository.repository_map[cls.model_type] = cls
 
     def __init__(self, db: AsyncIOMotorDatabase) -> None:
         self._db = db
@@ -131,9 +131,10 @@ class _GuildRepository[T: DbModel]:
                 raise ConcurrencyError(current_version)
             return obj
 
-    async def fetch_all(self, guild_id: int, *, sort: str | None = None) -> list[T]:
+    async def fetch_all(self, guild_id: int | None, *, sort: str | None = None) -> list[T]:
         try:
-            cursor = self._collection.find({"guild_id": {"$eq": guild_id}})
+            search_params = {"guild_id": {"$eq": guild_id}} if guild_id else {}
+            cursor = self._collection.find(search_params)
             if sort:
                 cursor.sort(sort)
             result = [self._converter.structure(doc, self.model_type) for doc in await cursor.to_list(length=100)]
@@ -164,7 +165,7 @@ class _GuildRepository[T: DbModel]:
 
 
 class _GuildServerRepository(
-    _GuildRepository[GuildServer],
+    _EntityRepository[GuildServer],
     collection="servers",
     model_desc="guild server",
 ):
@@ -183,7 +184,7 @@ class _GuildServerRepository(
 
 
 class _GuildPlayerGroupRepository(
-    _GuildRepository[GuildPlayerGroup],
+    _EntityRepository[GuildPlayerGroup],
     collection="player_groups",
     model_desc="player group",
 ):

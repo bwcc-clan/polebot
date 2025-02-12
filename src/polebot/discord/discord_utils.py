@@ -9,8 +9,7 @@ from discord.ext import commands
 from discord.utils import MISSING
 from typing_extensions import TypeVar
 
-from polebot.models import GuildServer
-from polebot.services.polebot_database import PolebotDatabase
+from polebot.orchestrator import Orchestrator
 from utils import JSON, parse_content_type
 from utils.cachetools import ttl_cache
 
@@ -199,8 +198,18 @@ async def parse_attachment_as_json(file: discord.Attachment) -> JSON:
         raise ValueError(f"Error parsing JSON file: {ex}") from ex
 
 
+async def get_attachment_as_text(file: discord.Attachment) -> str:
+    if not file.content_type:
+        encoding: str = "utf-8"
+    else:
+        content_type = parse_content_type(file.content_type)
+        encoding = content_type[1].get("charset", "utf-8")
+    file_data = await file.read()
+    return file_data.decode(encoding)
+
+
 async def get_autocomplete_servers(
-    db: PolebotDatabase,
+    orchestrator: Orchestrator,
     interaction: Interaction,
     current: str,
 ) -> list[app_commands.Choice[str]]:
@@ -208,7 +217,7 @@ async def get_autocomplete_servers(
         return []
 
     await interaction.response.defer()
-    guild_servers = await db.fetch_all(GuildServer, interaction.guild_id, sort="label")
+    guild_servers = await orchestrator.get_guild_servers(interaction.guild_id)
     choices = [
         app_commands.Choice(name=server.name, value=server.label)
         for server in guild_servers

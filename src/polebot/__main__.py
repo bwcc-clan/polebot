@@ -9,18 +9,14 @@ import time
 import environ
 import uvloop
 from dotenv import load_dotenv
-from lagom import Container
 
+from polebot.orchestrator import Orchestrator
 from utils.log_tools import configure_logger
 
 from .app_config import AppConfig
 from .composition_root import (
-    begin_server_context,
     init_container,
 )
-from .discord.bot import make_bot
-from .models import ServerParameters, get_server_params
-from .services.server_controller import ServerController
 
 log_level = os.getenv("LOG_LEVELS", ":INFO")
 log_location = os.getenv("LOG_LOCATION", "./logs")
@@ -44,45 +40,15 @@ def shutdown(sig: signal.Signals) -> None:
     else:
         logger.info("Received %s", sig.name)
 
-
-async def run_server_controller(
-    server_params: ServerParameters,
-    container: Container,
-) -> None:
-    """Runs the server controller for the specified server configuration.
-
-    Creates a DI context for the server, then instantiates and runs the server manager from within that context.
-
-    Args:
-        server_params (ServerParameters): The server configuration.
-        container (Container): The root DI container.
-    """
-    with begin_server_context(
-        container,
-        server_params,
-        _stop_event,
-    ) as context_container:
-        server_controller = context_container[ServerController]
-        async with server_controller:
-            await server_controller.run()
-
-async def run_polebot(container: Container, app_config: AppConfig) -> None:
-    bot = make_bot(container)
-    await bot.start(app_config.discord_token)
-
 async def async_main(loop: asyncio.AbstractEventLoop) -> None:
     """The main async entry point for the application."""
     load_dotenv()
     cfg = environ.to_config(AppConfig)
     container = await init_container(app_config=cfg, loop=loop)
 
-    async with asyncio.TaskGroup() as tg:
-        tg.create_task(run_polebot(container, cfg), name="polebot")
-        server_params = get_server_params(cfg)
-        tg.create_task(
-            run_server_controller(server_params, container),
-            name="server-manager",
-        )
+    # orchestrator_instance = Orchestrator(container, _stop_event, cfg)
+    orchestrator_instance = container[Orchestrator]
+    await orchestrator_instance.run()
 
 
 def main() -> None:

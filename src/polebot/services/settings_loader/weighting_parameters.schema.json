@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/weighting_parameters.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "groups": {
+      "$ref": "#/$defs/map_groups"
+    },
+    "environments": {
+      "$ref": "#/$defs/environmentGroups"
+    }
+  },
+  "required": ["environments", "groups"],
+  "title": "Weighting Parameters",
+  "$defs": {
+    "environmentGroups": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/environmentGroup"
+      },
+      "propertyNames": {
+        "pattern": "^[a-zA-Z0-9_]+$",
+        "maxLength": 50
+      },
+      "minProperties": 1,
+      "title": "Environment Groups"
+    },
+    "environmentGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "weight": {
+          "$ref": "#/$defs/weight"
+        },
+        "repeat_decay": {
+          "$ref": "#/$defs/repeatDecay"
+        },
+        "environments": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/environmentType"
+          }
+        }
+      },
+      "required": ["environments", "repeat_decay", "weight"],
+      "title": "Environment Group"
+    },
+    "map_groups": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/map_group"
+      },
+      "propertyNames": {
+        "pattern": "^[a-zA-Z0-9_]+$",
+        "maxLength": 50
+      },
+      "minProperties": 1,
+      "title": "Map Groups"
+    },
+    "map_group": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "weight": {
+          "$ref": "#/$defs/weight"
+        },
+        "repeat_decay": {
+          "$ref": "#/$defs/repeatDecay"
+        },
+        "maps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mapName"
+          }
+        }
+      },
+      "required": ["maps", "repeat_decay", "weight"],
+      "title": "Map Groups"
+    },
+    "weight": {
+      "type": "integer",
+      "title": "Relative Weight",
+      "minimum": 0,
+      "maximum": 100,
+      "examples": [50, 80]
+    },
+    "repeatDecay": {
+      "type": "number",
+      "title": "Repeat Decay",
+      "minimum": 0,
+      "maximum": 1,
+      "examples": [0.5, 0.1]
+    },
+    "mapName": {
+      "type": "string",
+      "title": "Map Name",
+      "maxLength": 50,
+      "pattern": "^[a-zA-Z0-9_]+$",
+      "examples": [
+        "carentan",
+        "omahabeach",
+        "stmariedumont",
+        "stmereeglise",
+        "utahbeach"
+      ]
+    },
+    "environmentType": {
+      "type": "string",
+      "title": "Environment",
+      "enum": ["dawn", "day", "dusk", "night", "overcast", "rain"]
+    }
+  }
+}

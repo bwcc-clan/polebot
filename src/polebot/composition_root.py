@@ -17,9 +17,9 @@ from typeguard import TypeCheckError, check_type
 from crcon import ApiClient, LogStreamClient, LogStreamClientSettings
 from crcon.api_models import LogStreamObject
 from crcon.server_connection_details import ServerConnectionDetails
+from polebot.services.di import ContainerProvider
 
 from .app_config import AppConfig
-from .models import ServerParameters
 from .services.polebot_database import PolebotDatabase
 from .services.server_controller import ServerController
 from .services.votemap_processor import VotemapProcessor
@@ -76,6 +76,7 @@ async def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop)
         return _container
 
     # *** SINGLETON ***
+    _container[ContainerProvider] = ContainerProvider(_container)
     _container[AppConfig] = app_config
     mongo_client: AsyncIOMotorClient = AsyncIOMotorClient(app_config.mongodb.connection_string, tz_aware=True)
     mongo_db: AsyncIOMotorDatabase = mongo_client[app_config.mongodb.db_name]
@@ -108,14 +109,14 @@ _QUEUE_SIZE = 1000
 
 def begin_server_context(
     container: Container,
-    server_params: ServerParameters,
+    connection_details: ServerConnectionDetails,
     stop_event: asyncio.Event | None = None,
 ) -> ContextContainer:
     """Begin the server context by creating a nested DI container context.
 
     Args:
         container (Container): The parent container.
-        server_params (ServerParameters): The server configuration for the server within this context.
+        connection_details (ServerConnectionDetails): The connection details for the CRCON server within this context.
         stop_event (asyncio.Event | None, optional): If specified, an event that terminates the application. Defaults to
         None.
 
@@ -132,8 +133,7 @@ def begin_server_context(
             ApiClient,
         ],
     )
-    context_container[ServerParameters] = server_params
-    context_container[ServerConnectionDetails] = server_params.crcon_details
+    context_container[ServerConnectionDetails] = connection_details
     if stop_event:
         context_container[asyncio.Event] = stop_event
     context_container[asyncio.Queue[LogStreamObject]] = asyncio.Queue[LogStreamObject](_QUEUE_SIZE)
