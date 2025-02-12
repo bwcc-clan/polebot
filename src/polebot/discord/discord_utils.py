@@ -1,13 +1,12 @@
 import inspect
 import json
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, NoReturn
+from typing import TYPE_CHECKING, Any, NoReturn, TypeVar
 
 import discord
 from discord import ButtonStyle, Emoji, Interaction, PartialEmoji, SelectOption, app_commands, ui
 from discord.ext import commands
 from discord.utils import MISSING
-from typing_extensions import TypeVar
 
 from polebot.orchestrator import Orchestrator
 from utils import JSON, parse_content_type
