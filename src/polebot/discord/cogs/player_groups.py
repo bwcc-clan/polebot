@@ -7,11 +7,9 @@ from attrs import define
 from discord import Interaction, app_commands
 from discord.ext import commands
 
-from polebot.exceptions import DatastoreError, DuplicateKeyError
-from polebot.models import GuildPlayerGroup
-from polebot.services.polebot_database import PolebotDatabase
+from polebot.discord.bot import Polebot
+from polebot.orchestrator import OrchestrationError
 
-from ..discord_bot import DiscordBot
 from ..discord_utils import (
     get_command_mention,
     get_error_embed,
@@ -29,12 +27,10 @@ class PlayerGroupProps:
 
 class ModalResult[T]:
     @overload
-    def __init__(self, *, error_msg: str) -> None:
-        ...
+    def __init__(self, *, error_msg: str) -> None: ...
 
     @overload
-    def __init__(self, *, result: T) -> None:
-        ...
+    def __init__(self, *, result: T) -> None: ...
 
     def __init__(self, *, result: T | None = None, error_msg: str | None = None) -> None:
         if result and error_msg:
@@ -125,9 +121,9 @@ class AddPlayerGroupModal(discord.ui.Modal, title="Add Player Group"):
 
 @app_commands.guild_only()
 class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage groups of server players"):
-    def __init__(self, bot: DiscordBot, db: PolebotDatabase) -> None:
+    def __init__(self, bot: Polebot) -> None:
         self.bot = bot
-        self.db = db
+        self._orchestrator = bot.orchestrator
 
     @app_commands.command(name="list", description="List player groups")
     @app_commands.guild_only()
@@ -139,7 +135,7 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
             return
 
         try:
-            player_groups = await self.db.fetch_all(GuildPlayerGroup, interaction.guild_id, sort="label")
+            player_groups = await self._orchestrator.get_player_groups(interaction.guild_id)
             if len(player_groups):
                 content = ""
                 for player_group in sorted(player_groups, key=lambda s: s.label):
@@ -149,13 +145,13 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
                 content = to_discord_markdown(
                     f"""
                     No player groups have been added yet. Use
-                    {await get_command_mention(self.bot.tree, 'playergroups', 'add')} to add one.
+                    {await get_command_mention(self.bot.tree, "playergroups", "add")} to add one.
                     """,
                 )
                 embed = get_error_embed(title="No player groups", description=content)
             await interaction.followup.send(embed=embed, ephemeral=True)
 
-        except DatastoreError as ex:
+        except OrchestrationError as ex:
             self.bot.logger.error("Error accessing database", exc_info=ex)
             await interaction.followup.send("Oops, something went wrong!", ephemeral=True)
 
@@ -180,23 +176,19 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
             await interaction.followup.send(embed=embed, ephemeral=True)
             return
 
-        player_group = GuildPlayerGroup(
-            guild_id=interaction.guild_id,
-            label=modal.result.value.label,
-            selector=modal.result.value.selector,
-        )
         try:
-            await self.db.insert(player_group)
-        except DatastoreError as ex:
+            player_group = await self._orchestrator.add_player_group(
+                guild_id=interaction.guild_id,
+                label=modal.result.value.label,
+                selector=modal.result.value.selector,
+            )
+        except OrchestrationError as ex:
             self.bot.logger.warning("Failed to add player group", exc_info=ex)
-            if isinstance(ex, DuplicateKeyError):
-                content = f"Player group {modal.result.value.label} already exists."
-            else:
-                content = f"Unable to add player group {modal.result.value.label}."
+            content = ex.message
             embed = get_error_embed(title="Error", description=to_discord_markdown(content))
             await interaction.followup.send(embed=embed, ephemeral=True)
         else:
-            content = f"Player group `{modal.result.value.label}` was added."
+            content = f"Player group `{player_group.label}` was added."
             embed = get_success_embed(title="Player group added", description=to_discord_markdown(content))
             await interaction.followup.send(embed=embed)
 
@@ -205,7 +197,7 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
             return []
 
         await interaction.response.defer()
-        player_groups = await self.db.fetch_all(GuildPlayerGroup, interaction.guild_id, sort="label")
+        player_groups = await self._orchestrator.get_player_groups(interaction.guild_id)
         choices = [
             app_commands.Choice(name=f"{group.label}: {group.selector}", value=group.label)
             for group in player_groups
@@ -221,31 +213,24 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
             self.bot.logger.error("remove interaction has no guild_id")
             return
 
-        # If server contains a valid label then the user selected from the choices. If not, error
         await interaction.response.defer()
-        guild_server = await self.db.find_one(
-            GuildPlayerGroup,
-            guild_id=interaction.guild_id,
-            attr_name="label",
-            attr_value=group,
-        )
-        if guild_server:
-            await self.db.delete(GuildPlayerGroup, guild_server.id)
-            self.bot.logger.info("Group %s deleted", group)
-            content = f"Group {guild_server.label} was removed."
-            embed = get_success_embed(title="Group removed", description=to_discord_markdown(content))
-            await interaction.followup.send(embed=embed)
-        else:
-            embed = get_error_embed(
-                title="Group not found",
-                description=f"No group labelled '{group}' exists.",
-            )
+
+        try:
+            await self._orchestrator.remove_player_group(interaction.guild_id, group)
+        except OrchestrationError as ex:
+            content = ex.message
+            embed = get_error_embed(title="Group not removed", description=to_discord_markdown(content))
             await interaction.delete_original_response()
             await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+        else:
+            content = f"Group {group} was removed."
+            embed = get_success_embed(title="Group removed", description=to_discord_markdown(content))
+            await interaction.followup.send(embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:
-    if not isinstance(bot, DiscordBot):
-        raise TypeError("This cog is designed to be used with a DiscordBot.")
-    container = bot.container
-    await bot.add_cog(PlayerGroups(bot, db=container[PolebotDatabase]))
+    if not isinstance(bot, Polebot):
+        raise TypeError("This cog is designed to be used with a Polebot.")
+
+    await bot.add_cog(PlayerGroups(bot))

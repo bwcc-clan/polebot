@@ -17,7 +17,7 @@ from typeguard import TypeCheckError, check_type
 from crcon import ApiClient, LogStreamClient, LogStreamClientSettings
 from crcon.api_models import LogStreamObject
 from crcon.server_connection_details import ServerConnectionDetails
-from polebot.services.di import ContainerProvider
+from polebot.container_provider import ContainerProvider
 
 from .app_config import AppConfig
 from .services.polebot_database import PolebotDatabase

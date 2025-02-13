@@ -7,15 +7,15 @@ from lagom import Container
 
 from crcon.exceptions import ApiClientError
 from crcon.server_connection_details import ServerConnectionDetails
-from polebot.exceptions import DatastoreError
-from polebot.models import GuildServer
+from polebot.exceptions import DatastoreError, DuplicateKeyError
+from polebot.models import GuildPlayerGroup, GuildServer
 from polebot.services import cattrs_helpers
 from polebot.services.settings_loader._settings_loader import SettingsLoader
 
 from .app_config import AppConfig
 from .composition_root import begin_server_context, create_api_client
+from .container_provider import ContainerProvider
 from .discord.bot import make_bot
-from .services.di import ContainerProvider
 from .services.polebot_database import PolebotDatabase
 from .services.server_controller import ServerController
 
@@ -190,6 +190,42 @@ class Orchestrator:
             return (guild_server, guild_server.enable_votemap != enabled)
         except DatastoreError as ex:
             raise OrchestrationError(f"Unable to save changes for server {server_label}.") from ex
+
+    async def get_player_groups(self, guild_id: int) -> list[GuildPlayerGroup]:
+        return await self.db.fetch_all(GuildPlayerGroup, guild_id, sort="label")
+
+    async def add_player_group(self, guild_id: int, label: str, selector: str) -> GuildPlayerGroup:
+        player_group = GuildPlayerGroup(
+            guild_id=guild_id,
+            label=label,
+            selector=selector,
+        )
+        try:
+            player_group = await self.db.insert(player_group)
+        except DatastoreError as ex:
+            self._logger.warning("Failed to add player group", exc_info=ex)
+            if isinstance(ex, DuplicateKeyError):
+                raise OrchestrationError(f"Player group {label} already exists.") from ex
+            else:
+                raise OrchestrationError(f"Unable to add player group {label}.") from ex
+        return player_group
+
+    async def remove_player_group(self, guild_id: int, label: str) -> None:
+        player_group = await self.db.find_one(
+            GuildPlayerGroup,
+            guild_id=guild_id,
+            attr_name="label",
+            attr_value=label,
+        )
+        if player_group:
+            try:
+                await self.db.delete(GuildPlayerGroup, player_group.id)
+                self._logger.info("Player group %s removed", player_group.id)
+            except DatastoreError as ex:
+                self._logger.error("Error removing player group %s", player_group.id, exc_info=ex)
+                raise OrchestrationError(f"Unable to remove player group {label}.") from None
+        else:
+            raise OrchestrationError(f"No player group labelled '{label}' exists.")
 
     async def _run_server_controller(
         self,
