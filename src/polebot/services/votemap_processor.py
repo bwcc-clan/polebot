@@ -103,7 +103,7 @@ class VotemapProcessor(contextlib.AbstractAsyncContextManager):
     @weighting_params.setter
     def weighting_params(self, value: WeightingParameters | None) -> None:
         if not value:
-            self._enabled = False
+            self.enabled = False
         self._weighting_parameters = value
 
     def get_cache(self, cache_hint: str | None = None) -> cachetools.TLRUCache[Any, CacheItem[Any]]:

@@ -113,6 +113,14 @@ class Orchestrator:
     async def get_guild_servers(self, guild_id: int) -> list[GuildServer]:
         return await self.db.fetch_all(GuildServer, guild_id, sort="label")
 
+    async def get_guild_server(self, guild_id: int, label: str) -> GuildServer | None:
+        return await self.db.find_one(
+            GuildServer,
+            guild_id=guild_id,
+            attr_name="label",
+            attr_value=label,
+        )
+
     async def get_server_votemap_settings(self, guild_id: int, server_label: str) -> str:
         guild_server = await self.db.find_one(
             GuildServer,
@@ -154,6 +162,34 @@ class Orchestrator:
             raise OrchestrationError(f"Unable to save votemap settings for server {server_label}.") from ex
         else:
             return guild_server
+
+    async def set_server_votemap_enabled(
+        self, guild_id: int, server_label: str, enabled: bool,
+    ) -> tuple[GuildServer, bool]:
+        guild_server = await self.db.find_one(
+            GuildServer,
+            guild_id=guild_id,
+            attr_name="label",
+            attr_value=server_label,
+        )
+        if not guild_server:
+            raise OrchestrationError(f"Server {server_label} not found")
+        if not guild_server.weighting_parameters:
+            raise OrchestrationError(
+                f"Server {server_label} does not have any votemap settings, can't enable votemap bot",
+            )
+        try:
+            if guild_server.enable_votemap != enabled:
+                guild_server.enable_votemap = enabled
+                guild_server = await self.db.update(guild_server)
+                self._logger.info(
+                    "Votemap bot %s for server %s",
+                    "enabled" if enabled else "disabled",
+                    guild_server.id,
+                )
+            return (guild_server, guild_server.enable_votemap != enabled)
+        except DatastoreError as ex:
+            raise OrchestrationError(f"Unable to save changes for server {server_label}.") from ex
 
     async def _run_server_controller(
         self,

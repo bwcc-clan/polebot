@@ -3,6 +3,7 @@ import io
 import discord
 from discord import File, Interaction, app_commands
 from discord.ext import commands
+from discord.utils import escape_markdown
 
 from polebot.discord.bot import Polebot
 from polebot.orchestrator import OrchestrationError
@@ -80,9 +81,77 @@ class Votemaps(commands.GroupCog, name="votemaps", description="Manage the votem
             await interaction.followup.send(embed=embed, ephemeral=True)
         else:
             self.bot.logger.info("Votemap settings uploaded for server %s", guild_server.id)
-            content = f"Votemap settings were uploaded for server **{guild_server.name}**."
+            content = f"Votemap settings were uploaded for server **{escape_markdown(guild_server.name)}**."
             embed = get_success_embed(title="Votemap settings uploaded", description=to_discord_markdown(content))
             await interaction.followup.send(embed=embed)
+
+    @app_commands.command(name="enable", description="Enable the votemap bot for a server")
+    @app_commands.guild_only()
+    @app_commands.autocomplete(server=_autocomplete_servers)
+    async def enable_votemaps(self, interaction: Interaction, server: str) -> None:
+        if interaction.guild_id is None:
+            self.bot.logger.error("enable_votemaps interaction has no guild_id")
+            return
+
+        await interaction.response.defer()
+
+        try:
+            guild_server, updated = await self._orchestrator.set_server_votemap_enabled(
+                interaction.guild_id,
+                server,
+                True,
+            )
+        except OrchestrationError as ex:
+            embed = get_error_embed(
+                title="Error enabling votemap",
+                description=ex.message,
+            )
+            await interaction.delete_original_response()
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        else:
+            if not updated:
+                content = f"Votemap bot already enabled for server **{escape_markdown(guild_server.name)}**."
+                embed = get_success_embed(title="No change", description=to_discord_markdown(content))
+                await interaction.delete_original_response()
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            else:
+                content = f"Votemap bot enabled for server **{escape_markdown(guild_server.name)}**."
+                embed = get_success_embed(title="Votemap enabled", description=to_discord_markdown(content))
+                await interaction.followup.send(embed=embed)
+
+    @app_commands.command(name="disable", description="Disable the votemap bot for a server")
+    @app_commands.guild_only()
+    @app_commands.autocomplete(server=_autocomplete_servers)
+    async def disable_votemaps(self, interaction: Interaction, server: str) -> None:
+        if interaction.guild_id is None:
+            self.bot.logger.error("disable_votemaps interaction has no guild_id")
+            return
+
+        await interaction.response.defer()
+
+        try:
+            guild_server, updated = await self._orchestrator.set_server_votemap_enabled(
+                interaction.guild_id,
+                server,
+                False,
+            )
+        except OrchestrationError as ex:
+            embed = get_error_embed(
+                title="Error disabling votemaps",
+                description=ex.message,
+            )
+            await interaction.delete_original_response()
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        else:
+            if not updated:
+                content = f"Votemap bot already disabled for server **{escape_markdown(guild_server.name)}**."
+                embed = get_success_embed(title="No change", description=to_discord_markdown(content))
+                await interaction.delete_original_response()
+                await interaction.followup.send(embed=embed, ephemeral=True)
+            else:
+                content = f"Votemap bot disabled for server **{escape_markdown(guild_server.name)}**."
+                embed = get_success_embed(title="Votemap disabled", description=to_discord_markdown(content))
+                await interaction.followup.send(embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:
