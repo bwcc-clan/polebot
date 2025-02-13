@@ -5,6 +5,7 @@ from aiohttp import ClientConnectorDNSError, ContentTypeError
 from attrs import define
 from discord import Interaction, app_commands
 from discord.ext import commands
+from discord.utils import escape_markdown
 
 from crcon import ApiClientError, ServerConnectionDetails
 from polebot.composition_root import create_api_client
@@ -159,7 +160,9 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
         crcon_details = ServerConnectionDetails(modal.result.server_props.api_url, modal.result.server_props.api_key)
         try:
             server_name = await self._orchestrator.add_guild_server(
-                interaction.guild_id, modal.result.server_props.label, crcon_details,
+                interaction.guild_id,
+                modal.result.server_props.label,
+                crcon_details,
             )
         except OrchestrationError as ex:
             self.bot.logger.warning("Unable to add server", exc_info=ex)
@@ -195,6 +198,35 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
             embed = get_success_embed(title="Server removed", description=to_discord_markdown(content))
             await interaction.followup.send(embed=embed)
 
+    @app_commands.command(name="show", description="Show server details")
+    @app_commands.guild_only()
+    @app_commands.autocomplete(server=_autocomplete_servers)
+    async def show_server(self, interaction: Interaction, server: str) -> None:
+        if interaction.guild_id is None:
+            self.bot.logger.error("add_server interaction has no guild_id")
+            return
+
+        await interaction.response.defer()
+        guild_server = await self._orchestrator.get_guild_server(interaction.guild_id, server)
+
+        if guild_server is None:
+            content = f"Server {server} not found."
+            embed = get_error_embed(title="Error", description=to_discord_markdown(content))
+            await interaction.followup.send(embed=embed, ephemeral=True)
+            return
+
+        content = f"""Details for server `{server}`:"""
+        embed = get_success_embed(title="Server details", description=to_discord_markdown(content))
+        embed.add_field(name="Name", value=escape_markdown(guild_server.name))
+        embed.add_field(name="Label", value=guild_server.label)
+        embed.add_field(name="URL", value=guild_server.crcon_details.api_url)
+        embed.add_field(name="Votemap enabled?", value="Yes" if guild_server.enable_votemap else "No")
+        if guild_server.enable_votemap and guild_server.weighting_parameters:
+            mention = await get_command_mention(self.bot.tree, "votemaps", "downloadsettings")
+            embed.add_field(name="Weighting Parameters", value=f"Use {mention} to view")
+        embed.add_field(name="Created", value=f"<t:{int(guild_server.created_date_utc.timestamp())}:R>")
+        embed.add_field(name="Modified", value=f"<t:{int(guild_server.modified_date_utc.timestamp())}:R>")
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
     async def _attempt_connect_to_server(self, crcon_details: ServerConnectionDetails) -> tuple[bool, str]:
         api_client = create_api_client(self.bot.container, crcon_details)
