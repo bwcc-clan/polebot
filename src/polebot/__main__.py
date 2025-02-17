@@ -46,7 +46,6 @@ async def async_main(loop: asyncio.AbstractEventLoop) -> None:
     cfg = environ.to_config(AppConfig)
     container = await init_container(app_config=cfg, loop=loop)
 
-    # orchestrator_instance = Orchestrator(container, _stop_event, cfg)
     orchestrator_instance = container[Orchestrator]
     await orchestrator_instance.run()
 
