@@ -1,6 +1,4 @@
 import logging
-import re
-from typing import Self, overload
 
 import discord
 from attrs import define
@@ -9,12 +7,16 @@ from discord.ext import commands
 
 from polebot.discord.bot import Polebot
 from polebot.orchestrator import OrchestrationError
+from polebot.services.player_matcher import PlayerMatcher
 
 from ..discord_utils import (
+    BaseInputModal,
+    ValidationFailure,
+    do_input_modal,
+    get_autocomplete_servers,
     get_command_mention,
     get_error_embed,
     get_success_embed,
-    get_unknown_error_embed,
     to_discord_markdown,
 )
 
@@ -25,50 +27,10 @@ class PlayerGroupProps:
     selector: str
 
 
-class ModalResult[T]:
-    @overload
-    def __init__(self, *, error_msg: str) -> None: ...
-
-    @overload
-    def __init__(self, *, result: T) -> None: ...
-
-    def __init__(self, *, result: T | None = None, error_msg: str | None = None) -> None:
-        if result and error_msg:
-            raise ValueError("You must only provide either result or error_msg, not both")
-        if result:
-            self.success = True
-            self._value = result
-        elif error_msg:
-            self.success = False
-            self._error_msg = error_msg
-        else:
-            raise ValueError("Either result or error must be provided")
-
-    @property
-    def value(self) -> T:
-        if not self.success:
-            raise RuntimeError("Result indicates failure; error message not available")
-        return self._value
-
-    @property
-    def error_msg(self) -> str:
-        if self.success:
-            raise RuntimeError("Result indicates success; error message not available")
-        return self._error_msg
-
-    @classmethod
-    def from_error(cls, error_msg: str) -> Self:
-        return cls(error_msg=error_msg)
-
-    @classmethod
-    def from_value(cls, value: T) -> Self:
-        return cls(result=value)
-
-
-class AddPlayerGroupModal(discord.ui.Modal, title="Add Player Group"):
+class AddPlayerGroupModal(BaseInputModal, title="Add Player Group"):
     label: discord.ui.TextInput = discord.ui.TextInput(
         label="Label",
-        placeholder="clan-members",
+        placeholder="Enter the group name",
         min_length=1,
         max_length=50,
         required=True,
@@ -76,7 +38,7 @@ class AddPlayerGroupModal(discord.ui.Modal, title="Add Player Group"):
     )
     selector: discord.ui.TextInput = discord.ui.TextInput(
         label="Selector",
-        placeholder="[clan]",
+        placeholder="Enter the clan prefix or a regular expression to identify members",
         min_length=1,
         max_length=256,
         required=True,
@@ -91,32 +53,57 @@ class AddPlayerGroupModal(discord.ui.Modal, title="Add Player Group"):
         timeout: float | None = None,
         custom_id: str = discord.utils.MISSING,
     ) -> None:
-        self.logger = logger
-        self.result: ModalResult[PlayerGroupProps] | None = None
-        super().__init__(title=title, timeout=timeout, custom_id=custom_id)
+        super().__init__(
+            validator=validate_player_group_props,
+            logger=logger,
+            title=title,
+            timeout=timeout,
+            custom_id=custom_id,
+        )
 
-    async def on_submit(self, interaction: discord.Interaction) -> None:
-        await interaction.response.defer(ephemeral=True)
-        validate_result = self.validate()
-        if isinstance(validate_result, PlayerGroupProps):
-            self.result = ModalResult.from_value(value=validate_result)
-        else:
-            self.result = ModalResult.from_error(error_msg=validate_result)
-        self.stop()
 
-    async def on_error(self, interaction: Interaction, error: Exception) -> None:  # type: ignore
-        self.logger.error("Modal error", exc_info=error)
-        await interaction.response.send_message(embed=get_unknown_error_embed(), ephemeral=True)
-        self.stop()
+async def validate_player_group_props(modal: BaseInputModal) -> ValidationFailure | PlayerGroupProps:
+    if not isinstance(modal, AddPlayerGroupModal):
+        return ValidationFailure(error_message="Invalid modal type")
+    selector = modal.selector.value
+    ok, err = PlayerMatcher.validate_selector(selector)
+    if not ok:
+        assert isinstance(err, str)  # noqa: S101
+        return ValidationFailure(error_message=err)
+    return PlayerGroupProps(label=modal.label.value, selector=modal.selector.value)
 
-    def validate(self) -> str | PlayerGroupProps:
-        selector = self.selector.value
-        if selector.startswith("/") and selector.endswith("/"):
-            try:
-                re.compile(selector)
-            except re.error:
-                return "Selector is not a valid regular expression"
-        return PlayerGroupProps(label=self.label.value, selector=self.selector.value)
+
+@define
+class SendMessageResult:
+    message: str
+
+
+class SendMessageModal(BaseInputModal, title="Send Message"):
+    message_text: discord.ui.TextInput = discord.ui.TextInput(
+        label="Message",
+        style=discord.TextStyle.paragraph,
+        placeholder="Enter message text",
+        min_length=1,
+        max_length=250,
+        required=True,
+        row=0,
+    )
+
+    def __init__(
+        self,
+        logger: logging.Logger,
+        *,
+        title: str = discord.utils.MISSING,
+        timeout: float | None = None,
+        custom_id: str = discord.utils.MISSING,
+    ) -> None:
+        super().__init__(validate_send_message, logger, title=title, timeout=timeout, custom_id=custom_id)
+
+
+async def validate_send_message(modal: BaseInputModal) -> ValidationFailure | SendMessageResult:
+    if not isinstance(modal, SendMessageModal):
+        return ValidationFailure(error_message="Invalid modal type")
+    return SendMessageResult(message=modal.message_text.value)
 
 
 @app_commands.guild_only()
@@ -163,24 +150,15 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
             return
 
         modal = AddPlayerGroupModal(self.bot.logger)
-        await interaction.response.send_modal(modal)
-        timed_out = await modal.wait()
-        self.bot.logger.debug("Modal complete")
-        if timed_out or not modal.result:
-            return
-        if not (modal.result.success):
-            error_desc = modal.result.error_msg or "-unknown-"
-            self.bot.logger.info("Add Player Group modal returned error: %s", error_desc)
-            content = f"Oops! Something went wrong: {error_desc}"
-            embed = get_error_embed(title="Error", description=to_discord_markdown(content))
-            await interaction.followup.send(embed=embed, ephemeral=True)
+        props = await do_input_modal(PlayerGroupProps, interaction, modal)
+        if not props:
             return
 
         try:
             player_group = await self._orchestrator.add_player_group(
                 guild_id=interaction.guild_id,
-                label=modal.result.value.label,
-                selector=modal.result.value.selector,
+                label=props.label,
+                selector=props.selector,
             )
         except OrchestrationError as ex:
             self.bot.logger.warning("Failed to add player group", exc_info=ex)
@@ -205,6 +183,9 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
         ]
         return choices
 
+    async def _autocomplete_servers(self, interaction: Interaction, current: str) -> list[app_commands.Choice[str]]:
+        return await get_autocomplete_servers(self._orchestrator, interaction, current)
+
     @app_commands.command(name="remove", description="Remove a player group")
     @app_commands.guild_only()
     @app_commands.autocomplete(group=_autocomplete_groups)
@@ -227,6 +208,46 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
             content = f"Group {group} was removed."
             embed = get_success_embed(title="Group removed", description=to_discord_markdown(content))
             await interaction.followup.send(embed=embed)
+
+    @app_commands.command(name="message", description="Send a message to a player group")
+    @app_commands.guild_only()
+    @app_commands.autocomplete(group=_autocomplete_groups, server=_autocomplete_servers)
+    async def send_message(self, interaction: Interaction, server: str, group: str) -> None:
+        if interaction.guild_id is None:
+            self.bot.logger.error("remove interaction has no guild_id")
+            return
+
+        # Display modal to get message
+        modal = SendMessageModal(self.bot.logger)
+        message = await do_input_modal(SendMessageResult, interaction, modal)
+        if not message:
+            return
+
+        try:
+            self.bot.logger.debug("Sending message to group %s on server %s", group, server)
+            players = list(
+                await self._orchestrator.send_message_to_player_group(
+                    interaction.guild_id,
+                    server,
+                    group,
+                    message.message,
+                ),
+            )
+            if players:
+                player_list = ", ".join([p.name for p in players])
+                content = f"""
+                Message sent to {len(players)} player(s) in group `{group}` on server `{server}`:
+
+                {player_list}."""
+            else:
+                content = f"No players in group `{group}` are currently playing on server `{server}`."
+            embed = get_success_embed(title="Message sent", description=to_discord_markdown(content))
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        except OrchestrationError as ex:
+            self.bot.logger.warning("Failed to send message to player group", exc_info=ex)
+            content = ex.message
+            embed = get_error_embed(title="Error", description=to_discord_markdown(content))
+            await interaction.followup.send(embed=embed, ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:

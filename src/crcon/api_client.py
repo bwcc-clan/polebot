@@ -110,6 +110,28 @@ class ApiClient(AbstractAsyncContextManager):
             json=body,
         )
 
+    async def get_playerids(self) -> Iterable[tuple[str, str]]:
+        """Get a list of name/player ID tuples representing the current players on the server."""
+        result = await self._call_api(
+            result_type=list[tuple[str, str]],
+            method=aiohttp.hdrs.METH_GET,
+            endpoint="api/get_playerids",
+        )
+        return result
+
+    async def message_player(self, player_id: str, message: str) -> None:
+        """Send a message to the specified player on the server."""
+        body = {
+            "player_id": player_id,
+            "message": message,
+        }
+        await self._call_api(
+            result_type=NoneType,
+            method=aiohttp.hdrs.METH_POST,
+            endpoint="api/send_message",
+            json=body,
+        )
+
     async def _call_api[T](
         self,
         result_type: type[T],

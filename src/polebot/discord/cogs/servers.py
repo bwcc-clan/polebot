@@ -16,11 +16,13 @@ from polebot.services import cattrs_helpers
 from utils import is_absolute
 
 from ..discord_utils import (
+    BaseInputModal,
+    ValidationFailure,
+    do_input_modal,
     get_autocomplete_servers,
     get_command_mention,
     get_error_embed,
     get_success_embed,
-    get_unknown_error_embed,
     to_discord_markdown,
 )
 
@@ -39,7 +41,7 @@ class ModalResult:
     server_props: ServerProps | None = None
 
 
-class AddServerModal(discord.ui.Modal, title="Add CRCON Server"):
+class AddServerModal(BaseInputModal, title="Add CRCON Server"):
     label: discord.ui.TextInput = discord.ui.TextInput(
         label="Label",
         placeholder="srv1",
@@ -71,28 +73,15 @@ class AddServerModal(discord.ui.Modal, title="Add CRCON Server"):
         timeout: float | None = None,
         custom_id: str = discord.utils.MISSING,
     ) -> None:
-        self.logger = logger
-        self.result: ModalResult | None = None
-        super().__init__(title=title, timeout=timeout, custom_id=custom_id)
+        super().__init__(validate_server_props, logger, title=title, timeout=timeout, custom_id=custom_id)
 
-    async def on_submit(self, interaction: discord.Interaction) -> None:
-        await interaction.response.defer(ephemeral=True)
-        validate_result = self.validate()
-        if isinstance(validate_result, ServerProps):
-            self.result = ModalResult(success=True, server_props=validate_result)
-        else:
-            self.result = ModalResult(False, error=validate_result)
-        self.stop()
 
-    async def on_error(self, interaction: Interaction, error: Exception) -> None:  # type: ignore
-        self.logger.error("Modal error", exc_info=error)
-        await interaction.response.send_message(embed=get_unknown_error_embed(), ephemeral=True)
-        self.stop()
-
-    def validate(self) -> str | ServerProps:
-        if not is_absolute(self.url.value):
-            return "Invalid value for Server URL - must be a valid URL"
-        return ServerProps(label=self.label.value, api_url=self.url.value, api_key=self.api_key.value)
+async def validate_server_props(modal: BaseInputModal) -> ValidationFailure | ServerProps:
+    if not isinstance(modal, AddServerModal):
+        return ValidationFailure(error_message="Invalid modal type")
+    if not is_absolute(modal.url.value):
+        return ValidationFailure("Invalid value for Server URL - must be a valid URL")
+    return ServerProps(label=modal.label.value, api_url=modal.url.value, api_key=modal.api_key.value)
 
 
 @app_commands.guild_only()
@@ -144,29 +133,20 @@ class Servers(commands.GroupCog, name="servers", description="Manage your CRCON 
             return
 
         modal = AddServerModal(self.bot.logger)
-        await interaction.response.send_modal(modal)
-        timed_out = await modal.wait()
-        self.bot.logger.debug("Modal complete")
-        if timed_out or not modal.result:
-            return
-        if not (modal.result.success and modal.result.server_props):
-            error_desc = modal.result.error or "-unknown-"
-            self.bot.logger.info("Add Server modal returned error: %s", error_desc)
-            content = f"Oops! Something went wrong: {error_desc}"
-            embed = get_error_embed(title="Error", description=to_discord_markdown(content))
-            await interaction.followup.send(embed=embed, ephemeral=True)
+        server_props = await do_input_modal(ServerProps, interaction, modal)
+        if not server_props:
             return
 
-        crcon_details = ServerConnectionDetails(modal.result.server_props.api_url, modal.result.server_props.api_key)
+        crcon_details = ServerConnectionDetails(server_props.api_url, server_props.api_key)
         try:
             server_name = await self._orchestrator.add_guild_server(
                 interaction.guild_id,
-                modal.result.server_props.label,
+                server_props.label,
                 crcon_details,
             )
         except OrchestrationError as ex:
             self.bot.logger.warning("Unable to add server", exc_info=ex)
-            content = f"Unable to add server at {modal.result.server_props.api_url}."
+            content = f"Unable to add server at {server_props.api_url}."
             embed = get_error_embed(title="Error", description=to_discord_markdown(content))
             await interaction.followup.send(embed=embed, ephemeral=True)
         else:
