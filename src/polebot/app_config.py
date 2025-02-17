@@ -7,8 +7,6 @@ import environ
 class AppConfig:
     """Configuration for the application."""
 
-    config_dir: str = environ.var(".config")
-
     max_websocket_connection_attempts: int = environ.var(
         0, help="The maximum number of attempts to connect to a websocket.",
     )
