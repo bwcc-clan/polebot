@@ -14,7 +14,7 @@ services:
 
 networks:
   # This is the network that contains the CRCON instance
-  frontend-net: {}
+  crcon-net: {}
   # This is the network that contains the MongoDB instance
   backend-net: {}
 

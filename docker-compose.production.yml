@@ -3,9 +3,9 @@ services:
   polebot:
     pull_policy: build
     environment:
-      - MONGODB_CONNECTION_STRING=${MONGODB_CONNECTION_STRING}
       - LOG_LEVELS=${LOG_LEVELS:-INFO}
       - LOG_LOCATION=/var/log/polebot
+      - APP_MONGODB_CONNECTION_STRING=${APP_MONGODB_CONNECTION_STRING}
       - APP_CONFIG_DIR=/app/.config
       - APP_DISCORD_TOKEN=${APP_DISCORD_TOKEN}
     volumes:
@@ -18,7 +18,7 @@ volumes:
     name: polebot_logs
 
 networks:
-  frontend-net:
+  crcon-net:
     external: true
     name: nginx_hll_rcon_tool_1_server1
   backend-net:
