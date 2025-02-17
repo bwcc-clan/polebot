@@ -53,6 +53,9 @@ class ServerController(contextlib.AbstractAsyncContextManager):
 
         self._task_group: asyncio.TaskGroup | None = None
         self._exit_stack = contextlib.AsyncExitStack()
+        self._task_group_ended_event = asyncio.Event()
+        self._task_group_ended_event.set() # signal initially to indicate task group is not running
+
 
     @property
     def votemap_enabled(self) -> bool:
@@ -94,6 +97,7 @@ class ServerController(contextlib.AbstractAsyncContextManager):
 
         tasks: list[asyncio.Task] = []
         try:
+            self._task_group_ended_event.clear()
             async with asyncio.TaskGroup() as tg:
                 self._task_group = tg
                 if self._stop_event:
@@ -104,15 +108,18 @@ class ServerController(contextlib.AbstractAsyncContextManager):
            pass
         finally:
             self._task_group = None
+            self._task_group_ended_event.set()
+            await asyncio.sleep(0)  # allow other tasks to run
+            for task in tasks:
+                logger.debug("Task %s: cancelled=%s", task.get_name(), task.cancelled())
+                if not task.cancelled() and task.exception():
+                    logger.exception("Task %s failed", task.get_name(), exc_info=task.exception())
 
-        for task in tasks:
-            logger.debug("Task %s: cancelled=%s", task.get_name(), task.cancelled())
-            if not task.cancelled() and task.exception():
-                logger.exception("Task %s failed", task.get_name(), exc_info=task.exception())
-
-    def stop(self) -> None:
-        """Stop the server controller."""
-        self._stop_internal(True)
+    async def stop(self, wait: bool = True) -> None:
+        """Stop the server controller and optionally wait for it to shut down."""
+        self._stop_internal()
+        if wait:
+            await self._task_group_ended_event.wait()
 
     async def send_group_message(self, player_matcher: PlayerMatcher, message: str) -> Iterable[PlayerProperties]:
         """Send a message to the player group."""
@@ -120,7 +127,7 @@ class ServerController(contextlib.AbstractAsyncContextManager):
         logger.info("Sent message to %d players", len(list(players)))
         return players
 
-    def _stop_internal(self, stop_monitor: bool) -> None:
+    def _stop_internal(self) -> None:
         if self._task_group:
             # add an exception-raising task to force the group to terminate
             self._task_group.create_task(self._force_terminate_task_group())
@@ -130,7 +137,7 @@ class ServerController(contextlib.AbstractAsyncContextManager):
         try:
             await self._stop_event.wait()
             logger.info("Stop event signalled, stopping")
-            self._stop_internal(False)
+            self._stop_internal()
         except asyncio.CancelledError:
             logger.info("Stop event monitor cancelled")
             raise
