@@ -104,8 +104,7 @@ class Orchestrator:
         )
         if guild_server:
             try:
-                await self._stop_server_controller(guild_server.id)
-                await self.db.delete(GuildServer, guild_server.id)
+                await self._delete_and_stop_server(guild_server.id)
             except DatastoreError as ex:
                 self._logger.error("Error removing server", exc_info=ex)
                 raise OrchestrationError(f"Unable to remove server {label}.") from None

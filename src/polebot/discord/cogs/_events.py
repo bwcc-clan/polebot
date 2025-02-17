@@ -1,11 +1,10 @@
-import inspect
 
 import discord
 from discord import app_commands
 from discord.ext import commands, tasks
 
 from ..bot import Polebot
-from ..discord_utils import dummy_awaitable_callable, get_command_mention
+from ..discord_utils import dummy_awaitable_callable, get_command_mention, to_discord_markdown
 
 
 class _events(commands.Cog):  # noqa: N801
@@ -16,7 +15,7 @@ class _events(commands.Cog):  # noqa: N801
         self.logger = self.bot.logger
         self._orchestrator = self.bot.orchestrator
         self.default_error_message = "🕳️ There is an error."
-        # self.update_status.start()
+        self.update_status.start()
 
         @bot.tree.error
         async def _dispatch_to_app_command_handler(
@@ -84,6 +83,7 @@ class _events(commands.Cog):  # noqa: N801
     async def update_status(self) -> None:
         count = self._orchestrator.get_server_count()
         await self.bot.change_presence(
+            status=discord.Status.online,
             activity=discord.Activity(name=f"{count} servers", type=discord.ActivityType.watching),
         )
 
@@ -102,24 +102,30 @@ class _events(commands.Cog):  # noqa: N801
             return
 
         markdown = f"""
-        Let me quickly introduce myself, I am **The Polebot**
+        Let me quickly introduce myself, I am the **Polebot**
+
 
         I can help you manage your Hell Let Loose server, by sending messages to multiple clan members at a time.
+
 
         Before you can let me loose, you need to set a couple of things up first. Don't worry, this will only take a few
         minutes!
 
-        1. **Add your server details** → {await get_command_mention(self.bot.tree, "servers", "add")}
-        2. **Create a player group** → {await get_command_mention(self.bot.tree, "playergroups", "add")}
-        3. **Configure bot permissions** → You probably want to edit the permissions of the bot to only allow certain
-           roles to use it. You can do this by right-clicking the bot icon in the server and selecting "Apps" and then
-           "Manage Server Integration".
 
-        That's all there is to it! Thanks for using The Polebot!
+        1. **Add your server details** → {await get_command_mention(self.bot.tree, "servers", "add")}
+
+        2. **Create a player group** → {await get_command_mention(self.bot.tree, "playergroups", "add")}
+
+        3. **Configure bot permissions** → You probably want to edit the permissions of the bot to only allow certain
+        roles to use it. You can do this by right-clicking the bot icon in the server and selecting "Apps" and then
+        "Manage Server Integration".
+
+
+        That's all there is to it! Thanks for using the Polebot!
         """
         embed = discord.Embed(
             title="Thank you for adding me 👋",
-            description=inspect.cleandoc(markdown),
+            description=to_discord_markdown(markdown),
             color=discord.Colour(7722980),
         ).set_image(url="https://github.com/bwcc-clan/polebot/blob/main/assets/polebot_banner.png?raw=true")
 
