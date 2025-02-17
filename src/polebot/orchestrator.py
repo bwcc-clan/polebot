@@ -67,12 +67,8 @@ class Orchestrator:
 
         async with self._tg:
             self._tg.create_task(self._run_polebot(), name="polebot")
-
             for server in servers:
-                self._tg.create_task(
-                    self._run_server_controller(server, self._container_provider.container),
-                    name=f"server-controller-{server.id}",
-                )
+                self._start_server_controller(server)
 
         self._logger.info("Orchestrator stopped")
 
@@ -96,6 +92,7 @@ class Orchestrator:
             content = f"Unable to add server {server_name}."
             raise OrchestrationError(content) from None
         else:
+            self._start_server_controller(guild_server)
             return server_name
 
     async def remove_guild_server(self, guild_id: int, label: str) -> None:
@@ -263,6 +260,12 @@ class Orchestrator:
         players = await server_controller.send_group_message(player_matcher, message)
         self._logger.info("Message sent to player group %s(%s)", player_group.label, player_group.id)
         return players
+
+    def _start_server_controller(self, server: GuildServer) -> None:
+        self._tg.create_task(
+            self._run_server_controller(server, self._container_provider.container),
+            name=f"server-controller-{server.id}",
+        )
 
     async def _run_server_controller(
         self,
