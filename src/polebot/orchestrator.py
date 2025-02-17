@@ -169,7 +169,7 @@ class Orchestrator:
         self,
         guild_id: int,
         server_label: str,
-        enabled: bool,
+        enable: bool,
     ) -> tuple[GuildServer, bool]:
         guild_server = await self.db.find_one(
             GuildServer,
@@ -184,16 +184,18 @@ class Orchestrator:
                 f"Server {server_label} does not have any votemap settings, can't enable votemap bot",
             )
         try:
-            if guild_server.enable_votemap != enabled:
-                self._server_controllers[guild_server.id].votemap_enabled = enabled
-                guild_server.enable_votemap = enabled
+            updated = False
+            if guild_server.enable_votemap != enable:
+                self._server_controllers[guild_server.id].votemap_enabled = enable
+                guild_server.enable_votemap = enable
                 guild_server = await self.db.update(guild_server)
                 self._logger.info(
                     "Votemap bot %s for server %s",
-                    "enabled" if enabled else "disabled",
+                    "enabled" if enable else "disabled",
                     guild_server.id,
                 )
-            return (guild_server, guild_server.enable_votemap != enabled)
+                updated = True
+            return (guild_server, updated)
         except DatastoreError as ex:
             raise OrchestrationError(f"Unable to save changes for server {server_label}.") from ex
 
