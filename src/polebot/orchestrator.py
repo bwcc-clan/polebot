@@ -1,8 +1,10 @@
 import asyncio
 import json
 import logging
+from collections.abc import Iterable
 
 from aiohttp import ClientConnectorDNSError, ContentTypeError
+from bson import ObjectId
 from lagom import Container
 
 from crcon.exceptions import ApiClientError
@@ -10,6 +12,7 @@ from crcon.server_connection_details import ServerConnectionDetails
 from polebot.exceptions import DatastoreError, DuplicateKeyError
 from polebot.models import GuildPlayerGroup, GuildServer
 from polebot.services import cattrs_helpers
+from polebot.services.player_matcher import PlayerMatcher, PlayerProperties
 from polebot.services.settings_loader._settings_loader import SettingsLoader
 
 from .app_config import AppConfig
@@ -55,6 +58,7 @@ class Orchestrator:
         self._tg = asyncio.TaskGroup()
         self._db = container_provider.container[PolebotDatabase]
         self._settings_loader = SettingsLoader()
+        self._server_controllers: dict[ObjectId, ServerController] = {}
 
     async def run(self) -> None:
         self._logger.info("Orchestrator started")
@@ -156,6 +160,7 @@ class Orchestrator:
             raise OrchestrationError(f"No server with label {server_label} found")
 
         guild_server.weighting_parameters = result
+        self._server_controllers[guild_server.id].weighting_parameters = result
         try:
             guild_server = await self.db.update(guild_server)
         except DatastoreError as ex:
@@ -164,7 +169,10 @@ class Orchestrator:
             return guild_server
 
     async def set_server_votemap_enabled(
-        self, guild_id: int, server_label: str, enabled: bool,
+        self,
+        guild_id: int,
+        server_label: str,
+        enabled: bool,
     ) -> tuple[GuildServer, bool]:
         guild_server = await self.db.find_one(
             GuildServer,
@@ -180,6 +188,7 @@ class Orchestrator:
             )
         try:
             if guild_server.enable_votemap != enabled:
+                self._server_controllers[guild_server.id].votemap_enabled = enabled
                 guild_server.enable_votemap = enabled
                 guild_server = await self.db.update(guild_server)
                 self._logger.info(
@@ -227,6 +236,34 @@ class Orchestrator:
         else:
             raise OrchestrationError(f"No player group labelled '{label}' exists.")
 
+    async def send_message_to_player_group(
+        self, guild_id: int, server: str, group: str, message: str,
+    ) -> Iterable[PlayerProperties]:
+        guild_server = await self.db.find_one(
+            GuildServer,
+            guild_id=guild_id,
+            attr_name="label",
+            attr_value=server,
+        )
+        if not guild_server:
+            raise OrchestrationError(f"Server {server} not found")
+
+        player_group = await self.db.find_one(
+            GuildPlayerGroup,
+            guild_id=guild_id,
+            attr_name="label",
+            attr_value=group,
+        )
+        if not player_group:
+            raise OrchestrationError(f"Player group {group} not found")
+        server_controller = self._server_controllers.get(guild_server.id)
+        if not server_controller:
+            raise OrchestrationError(f"Server controller for {server} not found")
+        player_matcher = PlayerMatcher(player_group.selector)
+        players = await server_controller.send_group_message(player_matcher, message)
+        self._logger.info("Message sent to player group %s(%s)", player_group.label, player_group.id)
+        return players
+
     async def _run_server_controller(
         self,
         server: GuildServer,
@@ -249,9 +286,13 @@ class Orchestrator:
             server_controller.weighting_parameters = server.weighting_parameters
             if server.enable_votemap:
                 server_controller.votemap_enabled = True
+
+            self._server_controllers[server.id] = server_controller
+
             async with server_controller:
                 await server_controller.run()
 
+        self._server_controllers.pop(server.id, None)
         _logger.info("Server controller for %s stopped", server.name)
 
     async def _run_polebot(self) -> None:

@@ -1,4 +1,4 @@
-"""This module contains the ServerManager class.
+"""This module contains the ServerController class.
 
 This class is responsible for managing the server lifecycle of a single CRCON server instance.
 """
@@ -6,12 +6,15 @@ This class is responsible for managing the server lifecycle of a single CRCON se
 import asyncio
 import contextlib
 import logging
+from collections.abc import Iterable
 from types import TracebackType
 from typing import NoReturn, Self
 
 from crcon import LogStreamClient
 from crcon.api_models import LogMessageType, LogStreamObject
 from polebot.models import WeightingParameters
+from polebot.services.message_sender import MessageSender
+from polebot.services.player_matcher import PlayerMatcher, PlayerProperties
 
 from ..exceptions import TerminateTaskGroup
 from .votemap_processor import VotemapProcessor
@@ -29,6 +32,7 @@ class ServerController(contextlib.AbstractAsyncContextManager):
         loop: asyncio.AbstractEventLoop,
         log_stream_client: LogStreamClient,
         votemap_processor: VotemapProcessor,
+        message_sender: MessageSender,
         stop_event: asyncio.Event | None = None,
     ) -> None:
         """Initialise the server manager.
@@ -37,13 +41,15 @@ class ServerController(contextlib.AbstractAsyncContextManager):
             loop (asyncio.AbstractEventLoop): The event loop to use for async operations.
             log_stream_client (LogStreamClient): The log stream client to use for log message retrieval.
             votemap_processor (VotemapProcessor): The votemap manager to use for votemap selection.
+            message_sender (MessageSender): The message sender to use for sending messages to players on the server.
             stop_event (asyncio.Event | None, optional): If specified, an event that will stop the instance when fired.
         """
         self._loop = loop
-        self._stop_event = stop_event
         self._queue = asyncio.Queue[LogStreamObject](_QUEUE_SIZE)
         self._log_stream_client = log_stream_client
         self._votemap_processor = votemap_processor
+        self._message_sender = message_sender
+        self._stop_event = stop_event
 
         self._task_group: asyncio.TaskGroup | None = None
         self._exit_stack = contextlib.AsyncExitStack()
@@ -107,6 +113,12 @@ class ServerController(contextlib.AbstractAsyncContextManager):
     def stop(self) -> None:
         """Stop the server controller."""
         self._stop_internal(True)
+
+    async def send_group_message(self, player_matcher: PlayerMatcher, message: str) -> Iterable[PlayerProperties]:
+        """Send a message to the player group."""
+        players = await self._message_sender.send_group_message(player_matcher, message)
+        logger.info("Sent message to %d players", len(list(players)))
+        return players
 
     def _stop_internal(self, stop_monitor: bool) -> None:
         if self._task_group:
