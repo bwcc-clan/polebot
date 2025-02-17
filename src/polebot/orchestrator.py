@@ -104,7 +104,7 @@ class Orchestrator:
         )
         if guild_server:
             try:
-                await self.db.delete(GuildServer, guild_server.id)
+                await self._delete_and_stop_server(guild_server.id)
             except DatastoreError as ex:
                 self._logger.error("Error removing server", exc_info=ex)
                 raise OrchestrationError(f"Unable to remove server {label}.") from None
@@ -169,7 +169,7 @@ class Orchestrator:
         self,
         guild_id: int,
         server_label: str,
-        enable: bool,
+        enabled: bool,
     ) -> tuple[GuildServer, bool]:
         guild_server = await self.db.find_one(
             GuildServer,
@@ -184,18 +184,16 @@ class Orchestrator:
                 f"Server {server_label} does not have any votemap settings, can't enable votemap bot",
             )
         try:
-            updated = False
-            if guild_server.enable_votemap != enable:
-                self._server_controllers[guild_server.id].votemap_enabled = enable
-                guild_server.enable_votemap = enable
+            if guild_server.enable_votemap != enabled:
+                self._server_controllers[guild_server.id].votemap_enabled = enabled
+                guild_server.enable_votemap = enabled
                 guild_server = await self.db.update(guild_server)
                 self._logger.info(
                     "Votemap bot %s for server %s",
-                    "enabled" if enable else "disabled",
+                    "enabled" if enabled else "disabled",
                     guild_server.id,
                 )
-                updated = True
-            return (guild_server, updated)
+            return (guild_server, guild_server.enable_votemap != enabled)
         except DatastoreError as ex:
             raise OrchestrationError(f"Unable to save changes for server {server_label}.") from ex
 
@@ -263,11 +261,35 @@ class Orchestrator:
         self._logger.info("Message sent to player group %s(%s)", player_group.label, player_group.id)
         return players
 
+    async def delete_guild_data(self, guild_id: int) -> None:
+        try:
+            servers = await self.db.fetch_all(GuildServer, guild_id)
+            for server in servers:
+                await self._delete_and_stop_server(server.id)
+
+            player_groups = await self.db.fetch_all(GuildPlayerGroup, guild_id)
+            for player_group in player_groups:
+                await self.db.delete(GuildPlayerGroup, player_group.id)
+        except DatastoreError as ex:
+            raise OrchestrationError("Unable to delete guild data") from ex
+
+    def get_server_count(self) -> int:
+        return len(self._server_controllers)
+
+    async def _delete_and_stop_server(self, server_id: ObjectId) -> None:
+        await self._stop_server_controller(server_id)
+        await self.db.delete(GuildServer, server_id)
+
     def _start_server_controller(self, server: GuildServer) -> None:
         self._tg.create_task(
             self._run_server_controller(server, self._container_provider.container),
             name=f"server-controller-{server.id}",
         )
+
+    async def _stop_server_controller(self, server_id: ObjectId) -> None:
+        server_controller = self._server_controllers.get(server_id)
+        if server_controller:
+            await server_controller.stop()
 
     async def _run_server_controller(
         self,

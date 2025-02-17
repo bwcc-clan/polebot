@@ -1,25 +1,21 @@
-import inspect
 
 import discord
 from discord import app_commands
-from discord.ext import commands
-
-from polebot.services.polebot_database import PolebotDatabase
+from discord.ext import commands, tasks
 
 from ..bot import Polebot
-from ..discord_bot import DiscordBot
-from ..discord_utils import dummy_awaitable_callable, get_command_mention
+from ..discord_utils import dummy_awaitable_callable, get_command_mention, to_discord_markdown
 
 
 class _events(commands.Cog):  # noqa: N801
     """A class with most events in it."""
 
-    def __init__(self, bot: DiscordBot, guild_repo: PolebotDatabase) -> None:
+    def __init__(self, bot: Polebot) -> None:
         self.bot = bot
         self.logger = self.bot.logger
-        self._guild_repo = guild_repo
+        self._orchestrator = self.bot.orchestrator
         self.default_error_message = "🕳️ There is an error."
-        # self.update_status.start()
+        self.update_status.start()
 
         @bot.tree.error
         async def _dispatch_to_app_command_handler(
@@ -83,17 +79,17 @@ class _events(commands.Cog):  # noqa: N801
             self.logger.error("get_app_command_error", e)
             raise
 
-    # @tasks.loop(minutes=5.0)
-    # async def update_status(self) -> None:
-    #     # TODO: Implement this
-    #     # await self.bot.change_presence(
-    #     #     activity=discord.Activity(name=f"over {len(SESSIONS)} sessions", type=discord.ActivityType.watching),
-    #     # )
-    #     pass
+    @tasks.loop(minutes=1.0)
+    async def update_status(self) -> None:
+        count = self._orchestrator.get_server_count()
+        await self.bot.change_presence(
+            status=discord.Status.online,
+            activity=discord.Activity(name=f"{count} servers", type=discord.ActivityType.watching),
+        )
 
-    # @update_status.before_loop
-    # async def before_status(self) -> None:
-    #     await self.bot.wait_until_ready()
+    @update_status.before_loop
+    async def before_status(self) -> None:
+        await self.bot.wait_until_ready()
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: discord.Guild) -> None:
@@ -106,47 +102,42 @@ class _events(commands.Cog):  # noqa: N801
             return
 
         markdown = f"""
-        Let me quickly introduce myself, I am **The Polebot**
+        Let me quickly introduce myself, I am the **Polebot**
+
 
         I can help you manage your Hell Let Loose server, by sending messages to multiple clan members at a time.
+
 
         Before you can let me loose, you need to set a couple of things up first. Don't worry, this will only take a few
         minutes!
 
-        1. **Add your server details** → {await get_command_mention(self.bot.tree, 'servers', 'add')}
-        2. **Configure bot permissions** → TODO (Optional)
 
-        That's all there is to it! Thanks for using The Polebot!
+        1. **Add your server details** → {await get_command_mention(self.bot.tree, "servers", "add")}
+
+        2. **Create a player group** → {await get_command_mention(self.bot.tree, "playergroups", "add")}
+
+        3. **Configure bot permissions** → You probably want to edit the permissions of the bot to only allow certain
+        roles to use it. You can do this by right-clicking the bot icon in the server and selecting "Apps" and then
+        "Manage Server Integration".
+
+
+        That's all there is to it! Thanks for using the Polebot!
         """
         embed = discord.Embed(
             title="Thank you for adding me 👋",
-            description=inspect.cleandoc(markdown),
+            description=to_discord_markdown(markdown),
             color=discord.Colour(7722980),
-        ).set_image(url="https://github.com/timraay/HLLLogUtilities/blob/main/assets/banner.png?raw=true")
+        ).set_image(url="https://github.com/bwcc-clan/polebot/blob/main/assets/polebot_banner.png?raw=true")
 
         await channel.send(embed=embed)
 
-    # @commands.Cog.listener()
-    # async def on_guild_remove(self, guild: discord.Guild) -> None:
-    #     all_credentials = Credentials.in_guild(guild.id)
-    #     for credentials in all_credentials:
-    #         if credentials.autosession.enabled:
-    #             credentials.autosession.logger.info("Disabling AutoSession since its credentials are being deleted")
-    #             credentials.autosession.disable()
-
-    #         for session in credentials.get_sessions():
-    #             if session.active_in() is True:
-    #                 session.logger.info("Stopping ongoing session since its credentials are being deleted")
-    #                 await session.stop()
-
-    #             session.logger.info("Deleting session since it's being removed from a guild")
-    #             await session.delete()
-
-    #         credentials.delete()
+    @commands.Cog.listener()
+    async def on_guild_remove(self, guild: discord.Guild) -> None:
+        self.bot.logger.debug("on_guild_remove, guild=%d", guild.id)
+        await self._orchestrator.delete_guild_data(guild.id)
 
 
 async def setup(bot: commands.Bot) -> None:
     if not isinstance(bot, Polebot):
         raise TypeError("This cog is designed to be used with Polebot.")
-    container = bot.container
-    await bot.add_cog(_events(bot, guild_repo=container[PolebotDatabase]))
+    await bot.add_cog(_events(bot))
