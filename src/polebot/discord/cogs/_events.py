@@ -105,7 +105,8 @@ class _events(commands.Cog):  # noqa: N801
         Let me quickly introduce myself, I am the **Polebot**
 
 
-        I can help you manage your Hell Let Loose server, by sending messages to multiple clan members at a time.
+        I can help you manage your Hell Let Loose server, by sending messages to multiple clan members at a time. I can
+        also display the VIP status of your clan members, and more.
 
 
         Before you can let me loose, you need to set a couple of things up first. Don't worry, this will only take a few

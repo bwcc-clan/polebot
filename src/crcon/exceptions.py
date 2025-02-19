@@ -1,8 +1,8 @@
 class ApiClientError(Exception):
-    """The exception raised when the CRCONApiClient error occurs."""
+    """The exception raised when an ApiClient error occurs."""
 
-    def __init__(self, message: str, command: str, error: str, version: str) -> None:
-        """Creates a new instance of `CRCONApiClientError`.
+    def __init__(self, message: str, command: str, error: str, version: str | None) -> None:
+        """Creates a new instance of `ApiClientError`.
 
         Args:
             message (str): Indicates the error that occurred.

@@ -21,3 +21,11 @@ capability is not exposed by default, we have to use a slightly devious mechanis
 
 Note that there is a risk of difficulty if step 6 fails to run for some reason. If this occurs, the best thing is to
 manually reset the whitelist through the CRCON UI.
+
+## Send player messages
+
+Send messages to players in-game.
+
+## Show VIP
+
+Individual Discord server members can display their own VIP status.

@@ -12,9 +12,10 @@ from typing import NoReturn, Self
 
 from crcon import LogStreamClient
 from crcon.api_models import LogMessageType, LogStreamObject
-from polebot.models import WeightingParameters
+from polebot.models import VipInfo, WeightingParameters
 from polebot.services.message_sender import MessageSender
 from polebot.services.player_matcher import PlayerMatcher, PlayerProperties
+from polebot.services.vip_manager import VipManager
 
 from ..exceptions import TerminateTaskGroup
 from .votemap_processor import VotemapProcessor
@@ -33,6 +34,7 @@ class ServerController(contextlib.AbstractAsyncContextManager):
         log_stream_client: LogStreamClient,
         votemap_processor: VotemapProcessor,
         message_sender: MessageSender,
+        vip_manager: VipManager,
         stop_event: asyncio.Event | None = None,
     ) -> None:
         """Initialise the server manager.
@@ -42,6 +44,7 @@ class ServerController(contextlib.AbstractAsyncContextManager):
             log_stream_client (LogStreamClient): The log stream client to use for log message retrieval.
             votemap_processor (VotemapProcessor): The votemap manager to use for votemap selection.
             message_sender (MessageSender): The message sender to use for sending messages to players on the server.
+            vip_manager (VipManager): The VIP manager to use for VIP information retrieval.
             stop_event (asyncio.Event | None, optional): If specified, an event that will stop the instance when fired.
         """
         self._loop = loop
@@ -49,6 +52,7 @@ class ServerController(contextlib.AbstractAsyncContextManager):
         self._log_stream_client = log_stream_client
         self._votemap_processor = votemap_processor
         self._message_sender = message_sender
+        self._vip_manager = vip_manager
         self._stop_event = stop_event
 
         self._task_group: asyncio.TaskGroup | None = None
@@ -126,6 +130,10 @@ class ServerController(contextlib.AbstractAsyncContextManager):
         players = await self._message_sender.send_group_message(player_matcher, message)
         logger.info("Sent message to %d players", len(list(players)))
         return players
+
+    async def get_player_vip_info(self, player_name: str) -> VipInfo | None:
+        """Get the VIP information for the specified player."""
+        return await self._vip_manager.get_vip_by_name_or_id(player_name)
 
     def _stop_internal(self) -> None:
         if self._task_group:

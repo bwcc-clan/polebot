@@ -37,6 +37,13 @@ class WeightingParameters:
     environments: dict[str, EnvironmentGroup]
 
 
+@frozen
+class VipInfo:
+    player_id: str
+    player_name: str
+    vip_expiry: dt.datetime | None
+
+
 UNSAVED_SENTINEL = -1
 
 
