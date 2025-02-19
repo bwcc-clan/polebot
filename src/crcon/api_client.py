@@ -132,6 +132,24 @@ class ApiClient(AbstractAsyncContextManager):
             json=body,
         )
 
+    async def download_vips(self) -> str:
+        """Download the VIPs file from the server."""
+        try:
+            response = await self._make_request(
+                method=aiohttp.hdrs.METH_GET,
+                endpoint="api/download_vips",
+            )
+            response.raise_for_status()
+        except aiohttp.ClientResponseError as ex:
+            raise ApiClientError(
+                f"Failed to download VIPs file, status={ex.status}",
+                "download_vips",
+                str(ex.status),
+                version=None,
+            ) from ex
+        else:
+            return await response.text()
+
     async def _call_api[T](
         self,
         result_type: type[T],

@@ -1,7 +1,9 @@
+import datetime as dt
 import inspect
 import json
 import logging
 from collections.abc import Awaitable, Callable
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any, NoReturn, Self, TypeVar, cast, overload
 
 import discord
@@ -325,3 +327,17 @@ async def do_input_modal[T](result_type: type[T], interaction: Interaction, moda
         raise TypeError(f"Unexpected result type from modal: {type(modal.result.value)}")
     result = cast(T, modal.result.value)
     return result
+
+
+class DiscordDateFormat(StrEnum):
+    full_date_time = "F"
+    long_date_time = "f"
+    long_date = "D"
+    short_date = "d"
+    long_time = "T"
+    short_time = "t"
+    relative = "R"
+
+
+def discord_date(date: dt.datetime, date_format: DiscordDateFormat) -> str:
+    return f"<t:{int(date.timestamp())}:{date_format.value}>"

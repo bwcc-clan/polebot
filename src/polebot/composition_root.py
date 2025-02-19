@@ -19,6 +19,7 @@ from crcon.api_models import LogStreamObject
 from crcon.server_connection_details import ServerConnectionDetails
 from polebot.container_provider import ContainerProvider
 from polebot.services.message_sender import MessageSender
+from polebot.services.vip_manager import VipManager
 
 from .app_config import AppConfig
 from .services.polebot_database import PolebotDatabase
@@ -101,6 +102,7 @@ async def init_container(app_config: AppConfig, loop: asyncio.AbstractEventLoop)
     define_context_dependency(_container, VotemapProcessor)
     define_context_dependency(_container, MessageSender)
     define_context_dependency(_container, ApiClient)
+    define_context_dependency(_container, VipManager)
 
     _container_initialized = True
     return _container
@@ -128,13 +130,7 @@ def begin_server_context(
     context_container = ContextContainer(
         container,
         context_types=[],
-        context_singletons=[
-            ServerController,
-            LogStreamClient,
-            VotemapProcessor,
-            MessageSender,
-            ApiClient,
-        ],
+        context_singletons=[ServerController, LogStreamClient, VotemapProcessor, MessageSender, ApiClient, VipManager],
     )
     context_container[ServerConnectionDetails] = connection_details
     if stop_event:

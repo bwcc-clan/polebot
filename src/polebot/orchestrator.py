@@ -10,7 +10,7 @@ from lagom import Container
 from crcon.exceptions import ApiClientError
 from crcon.server_connection_details import ServerConnectionDetails
 from polebot.exceptions import DatastoreError, DuplicateKeyError
-from polebot.models import GuildPlayerGroup, GuildServer
+from polebot.models import GuildPlayerGroup, GuildServer, VipInfo
 from polebot.services import cattrs_helpers
 from polebot.services.player_matcher import PlayerMatcher, PlayerProperties
 from polebot.services.settings_loader._settings_loader import SettingsLoader
@@ -260,6 +260,17 @@ class Orchestrator:
         players = await server_controller.send_group_message(player_matcher, message)
         self._logger.info("Message sent to player group %s(%s)", player_group.label, player_group.id)
         return players
+
+    async def get_player_vip_info(self, guild_id: int, server_label: str, player_name: str) -> VipInfo | None:
+        guild_server = await self.db.find_one(
+            GuildServer,
+            guild_id=guild_id,
+            attr_name="label",
+            attr_value=server_label,
+        )
+        if not guild_server:
+            raise OrchestrationError(f"Server {server_label} not found")
+        return await self._server_controllers[guild_server.id].get_player_vip_info(player_name)
 
     async def delete_guild_data(self, guild_id: int) -> None:
         try:
