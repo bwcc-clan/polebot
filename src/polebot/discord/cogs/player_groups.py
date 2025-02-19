@@ -30,15 +30,15 @@ class PlayerGroupProps:
 class AddPlayerGroupModal(BaseInputModal, title="Add Player Group"):
     label: discord.ui.TextInput = discord.ui.TextInput(
         label="Label",
-        placeholder="Enter the group name",
+        placeholder="Enter the group's label",
         min_length=1,
         max_length=50,
         required=True,
         row=0,
     )
     selector: discord.ui.TextInput = discord.ui.TextInput(
-        label="Selector",
-        placeholder="Enter the clan prefix or a regular expression to identify members",
+        label="Filter",
+        placeholder="Enter the filter that identifies group members",
         min_length=1,
         max_length=256,
         required=True,
@@ -249,6 +249,102 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
             embed = get_error_embed(title="Error", description=to_discord_markdown(content))
             await interaction.followup.send(embed=embed, ephemeral=True)
 
+    @app_commands.command(name="help", description="Display help on player groups")
+    @app_commands.guild_only()
+    async def get_help(self, interaction: Interaction) -> None:
+        content = r"""
+        # About Player Groups
+
+        Player groups are lists of players who are currently playing on your servers. By using player groups, you can
+        perform bulk actions on all players in the group, such as sending messages.
+
+
+        A group's members are defined by a filter, which is applied to each online player to see if they are in the
+        group. If the player matches the filter, they are a member of the group.
+
+
+        Filters work by looking at the player name. A filter can be:
+
+        - for simple scenarios, a prefix filter that matches the first characters of a player name; or
+
+        - for more complex scenarios, a [regular expression](https://en.wikipedia.org/wiki/Regular_expression) filter
+        that matches the whole of a player's name.
+
+
+        If your filter starts and ends with a `/` (forward slash) character, Polebot treats the text in between these
+        delimiters as a regular expression. Otherwise, Polebot assumes it is a prefix filter.
+
+        ## Prefix filter
+
+        Example: `[57th]`
+
+
+        This is a prefix filter that matches any player whose name starts with the exact text `[57th]`. Prefix matches
+        are case sensitive. The table below shows some examples of names and whether they are group members or not:
+
+
+        :white_check_mark: `[57th] Geronimo`
+
+        :white_check_mark: `[57th]Geronimo`
+
+        :x: `[57TH] Geronimo`
+
+        :x: `57th Geronimo`
+
+        :x: `Geronimo [57th]`
+
+        ## Regular expression filter
+
+        Example: `/\[57[tT][hH]\]/`
+
+
+        This is a regular expression filter that matches any player with `[57th]` anywhere in their name (case
+        insensitive).
+
+
+        :white_check_mark: `[57th] Geronimo`
+
+        :white_check_mark: `[57th]Geronimo`
+
+        :white_check_mark: `[57TH] Geronimo`
+
+        :x: `57th Geronimo`
+
+        :white_check_mark: `Geronimo [57th]`
+
+
+        Regular expressions are complicated but powerful. There are many online resources that can help you learn them:
+        a good starting point is [regex101](https://regex101.com/).
+
+        ## Commands
+        """
+
+        embed1 = discord.Embed(title="Player group help", description=to_discord_markdown(content))
+        embed1.add_field(
+            name=await get_command_mention(self.bot.tree, "playergroups", "list"),
+            value="List all the player groups.",
+            inline=False,
+        )
+        embed1.add_field(
+            name=await get_command_mention(self.bot.tree, "playergroups", "add"),
+            value="Add a player group.",
+            inline=False,
+        )
+        embed1.add_field(
+            name=await get_command_mention(self.bot.tree, "playergroups", "remove"),
+            value="Remove a player group.",
+            inline=False,
+        )
+        embed1.add_field(
+            name=await get_command_mention(self.bot.tree, "playergroups", "message"),
+            value="Send an in-game message to all players that match the group's filter.",
+            inline=False,
+        )
+        await interaction.response.send_message(
+            content=to_discord_markdown(content),
+            embed=embed1,
+            ephemeral=True,
+        )
 
 async def setup(bot: commands.Bot) -> None:
     if not isinstance(bot, Polebot):
