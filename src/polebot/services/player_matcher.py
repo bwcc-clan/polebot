@@ -1,4 +1,3 @@
-
 import re
 
 from attrs import frozen
@@ -34,7 +33,7 @@ class PlayerMatcher:
     def validate_selector(cls, selector: str) -> tuple[bool, str | re.Pattern[str] | None]:
         if selector.startswith("/") and selector.endswith("/"):
             try:
-                pattern = re.compile(selector)
+                pattern = re.compile(selector.strip("/"))
                 return (True, pattern)
             except re.error:
                 return (False, "Selector is not a valid regular expression")

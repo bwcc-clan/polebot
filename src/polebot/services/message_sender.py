@@ -30,3 +30,8 @@ class MessageSender:
                 message_task_list.append((player, task))
 
         return [p for p, task in message_task_list if not task.exception() and task.result()]
+
+    async def get_players_in_group(self, player_matcher: PlayerMatcher) -> Iterable[PlayerProperties]:
+        player_ids = await self._client.get_playerids()
+        players = [PlayerProperties(name=name, id=player_id) for name, player_id in player_ids]
+        return [p for p in players if player_matcher.is_match(p)]

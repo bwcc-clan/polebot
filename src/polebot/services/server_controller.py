@@ -28,6 +28,7 @@ _QUEUE_SIZE = 1000
 
 class ServerController(contextlib.AbstractAsyncContextManager):
     """Responsible for controlling a single CRCON server instance."""
+
     def __init__(
         self,
         loop: asyncio.AbstractEventLoop,
@@ -58,8 +59,7 @@ class ServerController(contextlib.AbstractAsyncContextManager):
         self._task_group: asyncio.TaskGroup | None = None
         self._exit_stack = contextlib.AsyncExitStack()
         self._task_group_ended_event = asyncio.Event()
-        self._task_group_ended_event.set() # signal initially to indicate task group is not running
-
+        self._task_group_ended_event.set()  # signal initially to indicate task group is not running
 
     @property
     def votemap_enabled(self) -> bool:
@@ -89,7 +89,10 @@ class ServerController(contextlib.AbstractAsyncContextManager):
         return self
 
     async def __aexit__(
-        self, exc_t: type[BaseException] | None, exc_v: BaseException | None, exc_tb: TracebackType | None,
+        self,
+        exc_t: type[BaseException] | None,
+        exc_v: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> bool:
         """This method is a part of the context manager protocol. It is called when exiting the context manager."""
         return await self._exit_stack.__aexit__(exc_t, exc_v, exc_tb)
@@ -109,7 +112,7 @@ class ServerController(contextlib.AbstractAsyncContextManager):
                 tasks.append(tg.create_task(self._votemap_processor.run(), name="votemap-manager"))
                 tasks.append(tg.create_task(self._log_stream_client.run(), name="log-stream-client"))
         except* TerminateTaskGroup:
-           pass
+            pass
         finally:
             self._task_group = None
             self._task_group_ended_event.set()
@@ -131,6 +134,10 @@ class ServerController(contextlib.AbstractAsyncContextManager):
         logger.info("Sent message to %d players", len(list(players)))
         return players
 
+    async def get_players_in_group(self, player_matcher: PlayerMatcher) -> Iterable[PlayerProperties]:
+        """Get the players in the specified group."""
+        return await self._message_sender.get_players_in_group(player_matcher)
+
     async def get_player_vip_info(self, player_name: str) -> VipInfo | None:
         """Get the VIP information for the specified player."""
         return await self._vip_manager.get_vip_by_name_or_id(player_name)
@@ -151,5 +158,5 @@ class ServerController(contextlib.AbstractAsyncContextManager):
             raise
 
     async def _force_terminate_task_group(self) -> NoReturn:
-       """Used to force termination of a task group."""
-       raise TerminateTaskGroup()
+        """Used to force termination of a task group."""
+        raise TerminateTaskGroup()
