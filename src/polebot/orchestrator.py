@@ -234,7 +234,11 @@ class Orchestrator:
             raise OrchestrationError(f"No player group labelled '{label}' exists.")
 
     async def send_message_to_player_group(
-        self, guild_id: int, server: str, group: str, message: str,
+        self,
+        guild_id: int,
+        server: str,
+        group: str,
+        message: str,
     ) -> Iterable[PlayerProperties]:
         guild_server = await self.db.find_one(
             GuildServer,
@@ -259,6 +263,32 @@ class Orchestrator:
         player_matcher = PlayerMatcher(player_group.selector)
         players = await server_controller.send_group_message(player_matcher, message)
         self._logger.info("Message sent to player group %s(%s)", player_group.label, player_group.id)
+        return players
+
+    async def get_players_in_group(self, guild_id: int, server: str, group: str) -> Iterable[PlayerProperties]:
+        guild_server = await self.db.find_one(
+            GuildServer,
+            guild_id=guild_id,
+            attr_name="label",
+            attr_value=server,
+        )
+        if not guild_server:
+            raise OrchestrationError(f"Server {server} not found")
+
+        player_group = await self.db.find_one(
+            GuildPlayerGroup,
+            guild_id=guild_id,
+            attr_name="label",
+            attr_value=group,
+        )
+        if not player_group:
+            raise OrchestrationError(f"Player group {group} not found")
+        server_controller = self._server_controllers.get(guild_server.id)
+        if not server_controller:
+            raise OrchestrationError(f"Server controller for {server} not found")
+        player_matcher = PlayerMatcher(player_group.selector)
+        players = await server_controller.get_players_in_group(player_matcher)
+        self._logger.info("Players in player group %s(%s) shown", player_group.label, player_group.id)
         return players
 
     async def get_player_vip_info(self, guild_id: int, server_label: str, player_name: str) -> VipInfo | None:

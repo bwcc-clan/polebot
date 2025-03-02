@@ -249,6 +249,31 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
             embed = get_error_embed(title="Error", description=to_discord_markdown(content))
             await interaction.followup.send(embed=embed, ephemeral=True)
 
+    @app_commands.command(name="show", description="Show the members of a player group on a server")
+    @app_commands.guild_only()
+    @app_commands.autocomplete(group=_autocomplete_groups, server=_autocomplete_servers)
+    async def show_players(self, interaction: Interaction, server: str, group: str) -> None:
+        if interaction.guild_id is None:
+            self.bot.logger.error("show_players interaction has no guild_id")
+            return
+
+        await interaction.response.defer(ephemeral=True)
+
+        try:
+            players = await self._orchestrator.get_players_in_group(interaction.guild_id, server, group)
+            if players:
+                player_list = ", ".join([p.name for p in players])
+                content = f"Players in group `{group}` on server `{server}`:\n\n\n{player_list}"
+            else:
+                content = f"No players in group `{group}` are currently playing on server `{server}`."
+            embed = get_success_embed(title="Players in group", description=to_discord_markdown(content))
+            await interaction.followup.send(embed=embed, ephemeral=True)
+        except OrchestrationError as ex:
+            self.bot.logger.warning("Failed to get players in group", exc_info=ex)
+            content = ex.message
+            embed = get_error_embed(title="Error", description=to_discord_markdown(content))
+            await interaction.followup.send(embed=embed, ephemeral=True)
+
     @app_commands.command(name="help", description="Display help on player groups")
     @app_commands.guild_only()
     async def get_help(self, interaction: Interaction) -> None:
@@ -258,6 +283,7 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
         Player groups are lists of players who are currently playing on your servers. By using player groups, you can
         perform bulk actions on all players in the group, such as sending messages.
 
+        ## Filters
 
         A group's members are defined by a filter, which is applied to each online player to see if they are in the
         group. If the player matches the filter, they are a member of the group.
@@ -274,7 +300,7 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
         If your filter starts and ends with a `/` (forward slash) character, Polebot treats the text in between these
         delimiters as a regular expression. Otherwise, Polebot assumes it is a prefix filter.
 
-        ## Prefix filter
+        ### Prefix filter
 
         Example: `[57th]`
 
@@ -293,7 +319,7 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
 
         :x: `Geronimo [57th]`
 
-        ## Regular expression filter
+        ### Regular expression filter
 
         Example: `/\[57[tT][hH]\]/`
 
@@ -341,10 +367,10 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
             inline=False,
         )
         await interaction.response.send_message(
-            content=to_discord_markdown(content),
             embed=embed1,
             ephemeral=True,
         )
+
 
 async def setup(bot: commands.Bot) -> None:
     if not isinstance(bot, Polebot):
