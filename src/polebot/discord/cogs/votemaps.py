@@ -12,6 +12,7 @@ from polebot.services.settings_loader._settings_loader import SettingsLoader
 from ..discord_utils import (
     get_attachment_as_text,
     get_autocomplete_servers,
+    get_command_mention,
     get_error_embed,
     get_success_embed,
     to_discord_markdown,
@@ -152,6 +153,60 @@ class Votemaps(commands.GroupCog, name="votemaps", description="Manage the votem
                 content = f"Votemap bot disabled for server **{escape_markdown(guild_server.name)}**."
                 embed = get_success_embed(title="Votemap disabled", description=to_discord_markdown(content))
                 await interaction.followup.send(embed=embed)
+
+    @app_commands.command(name="help", description="Display help on votemap settings")
+    @app_commands.guild_only()
+    async def get_help(self, interaction: Interaction) -> None:
+        content = r"""
+        # About Votemap Settings
+
+        Polebot provides an enhanced votemap experience for your servers. It overrides the standard votemap behaviour in
+        CRCON and provides a more flexible and powerful way to manage the votemap choices on your server. Instead of all
+        maps being equally likely to be selected, you can assign weights to each map and environment to influence the
+        selection process.
+
+
+        Votemap settings are stored in a JSON file that you can upload and download. The settings file contains a list
+        of maps and "environments" (weather conditions, e.g. day / night / dusk) and their weights. Polebot uses this
+        file to determine which maps to favour when building its votemap selections.
+
+
+        The JSON file must conform to [this JSON
+        schema](https://github.com/bwcc-clan/polebot/blob/main/src/polebot/services/settings_loader/weighting_parameters.schema.json).
+        You can use the [JSON Schema Validator](https://www.jsonschemavalidator.net/) to check your file before
+        uploading it.
+
+        ## Commands
+        """
+
+        embed = discord.Embed(title="Votemaps help", description=to_discord_markdown(content))
+        embed.set_thumbnail(
+            url="https://github.com/bwcc-clan/polebot/blob/main/assets/polebot.png?raw=true",
+        )
+        embed.add_field(
+            name=await get_command_mention(self.bot.tree, "votemaps", "uploadsettings"),
+            value="Upload a votemap settings file for a server.",
+            inline=False,
+        )
+        embed.add_field(
+            name=await get_command_mention(self.bot.tree, "votemaps", "downloadsettings"),
+            value="Download the votemap settings file for a server.",
+            inline=False,
+        )
+        embed.add_field(
+            name=await get_command_mention(self.bot.tree, "votemaps", "enable"),
+            value="Enable the votemap bot for a server.",
+            inline=False,
+        )
+        embed.add_field(
+            name=await get_command_mention(self.bot.tree, "votemaps", "disable"),
+            value="Disable the votemap bot for a server, and revert to the standard CRCON mechanism.",
+            inline=False,
+        )
+        await interaction.response.send_message(
+            embed=embed,
+            ephemeral=True,
+        )
 
 
 async def setup(bot: commands.Bot) -> None:
