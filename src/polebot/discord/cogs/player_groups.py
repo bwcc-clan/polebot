@@ -346,6 +346,7 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
         """
 
         embed1 = discord.Embed(title="Player group help", description=to_discord_markdown(content))
+        embed1.set_image(url="https://github.com/bwcc-clan/polebot/blob/feature/playergroups-show-help/assets/polebot.png?raw=true")
         embed1.add_field(
             name=await get_command_mention(self.bot.tree, "playergroups", "list"),
             value="List all the player groups.",
@@ -364,6 +365,11 @@ class PlayerGroups(commands.GroupCog, name="playergroups", description="Manage g
         embed1.add_field(
             name=await get_command_mention(self.bot.tree, "playergroups", "message"),
             value="Send an in-game message to all players that match the group's filter.",
+            inline=False,
+        )
+        embed1.add_field(
+            name=await get_command_mention(self.bot.tree, "playergroups", "show"),
+            value="Show the members of a player group on a server.",
             inline=False,
         )
         await interaction.response.send_message(
