@@ -30,4 +30,10 @@
   ],
   "python.testing.unittestEnabled": false,
   "python.testing.pytestEnabled": true,
+  "json.schemas": [
+    {
+      "fileMatch": ["*.wp.json"],
+      "url": "./src/polebot/services/settings_loader/weighting_parameters.schema.json"
+    }
+  ],
 }
