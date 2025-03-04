@@ -8,6 +8,7 @@ services:
       - APP_MONGODB_CONNECTION_STRING=${APP_MONGODB_CONNECTION_STRING}
       - APP_MONGODB_DB_NAME=${APP_MONGODB_DB_NAME}
       - APP_DISCORD_TOKEN=${APP_DISCORD_TOKEN}
+      - APP_DISCORD_OWNER_ID=${APP_DISCORD_OWNER_ID}
     volumes:
     - polebot_logs:/var/log/polebot
     - /apps/polebot/.config:/app/.config

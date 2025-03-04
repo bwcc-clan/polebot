@@ -53,20 +53,9 @@ class Polebot(DiscordBot):
         else:
             logger.warning("Launched bot with no user")
 
-def make_bot(orchestrator: Orchestrator, container: Container) -> Polebot:
+def make_bot(orchestrator: Orchestrator, container: Container, discord_owner_id: int) -> Polebot:
     """Creates a bot instance."""
-    intents = discord.Intents(
-        emojis=True,
-        guild_scheduled_events=False,
-        guilds=True,
-        invites=True,
-        members=False,
-        message_content=False,
-        messages=True,
-        presences=False,
-        reactions=True,
-        voice_states=False,
-    )
+    intents = discord.Intents.default()
 
     bot = Polebot(
         orchestrator=orchestrator,
@@ -74,50 +63,7 @@ def make_bot(orchestrator: Orchestrator, container: Container) -> Polebot:
         command_prefix=commands.when_mentioned_or("/", "!"),
         case_insensitive=True,
         container=container,
+        owner_id=discord_owner_id,
     )
-
-    # @bot.command(aliases=["load"])
-    # @commands.is_owner()
-    # async def enable(ctx: commands.Context, cog: str) -> None:
-    #     """Enable a cog."""
-    #     cog = cog.lower()
-    #     if _cog_exists(cog):
-    #         await _load_cog(bot, cog)
-    #         await ctx.send(f"Enabled {cog}")
-    #     else:
-    #         await ctx.send(f"{cog} doesn't exist")
-
-    # @bot.command(aliases=["unload"])
-    # @commands.is_owner()
-    # async def disable(ctx: commands.Context, cog: str) -> None:
-    #     """Disable a cog."""
-    #     cog = cog.lower()
-    #     if _cog_exists(cog):
-    #         await _unload_cog(bot, cog)
-    #         await ctx.send(f"Disabled {cog}")
-    #     else:
-    #         await ctx.send(f"{cog} doesn't exist")
-
-    # @bot.command()
-    # @commands.is_owner()
-    # async def reload(ctx: commands.Context, cog: str | None = None) -> None:
-    #     """Reload cogs."""
-
-    #     async def reload_cog(ctx: commands.Context, cog_name: str) -> None:
-    #         """Reloads a cog."""
-    #         try:
-    #             await _reload_cog(bot, cog_name)
-    #             await ctx.send(f"Reloaded {cog_name}")
-    #         except Exception as e:  # noqa: BLE001
-    #             await ctx.send(f"Couldn't reload {cog_name}, " + str(e))
-
-    #     if not cog:
-    #         for cog_name in _all_cog_names():
-    #             await reload_cog(ctx, cog_name)
-    #     else:
-    #         if Path(f"./cogs/{cog}.py").exists():
-    #             await reload_cog(ctx, cog)
-    #         else:
-    #             await ctx.send(f"{cog} doesn't exist")
 
     return bot

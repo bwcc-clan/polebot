@@ -54,7 +54,7 @@ class Orchestrator:
         self._logger = logger or _logger
 
         self._converter = cattrs_helpers.make_params_converter()
-        self._bot = make_bot(self, self._container_provider.container)
+        self._bot = make_bot(self, self._container_provider.container, self._app_config.discord_owner_id)
         self._tg = asyncio.TaskGroup()
         self._db = container_provider.container[PolebotDatabase]
         self._settings_loader = SettingsLoader()
