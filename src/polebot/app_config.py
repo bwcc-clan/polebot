@@ -12,6 +12,7 @@ class AppConfig:
     )
 
     discord_token: str = environ.var(help="The token for the Discord bot.")
+    discord_owner_id: int = environ.var(help="The ID of the Discord bot owner.")
 
     @environ.config
     class MongoConfig:
