@@ -86,6 +86,7 @@ class _events(commands.Cog):  # noqa: N801
             status=discord.Status.online,
             activity=discord.Activity(name=f"{count} servers", type=discord.ActivityType.watching),
         )
+        self.logger.debug("Updated presence to watching %d servers", count)
 
     @update_status.before_loop
     async def before_status(self) -> None:
